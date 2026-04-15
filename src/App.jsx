@@ -35,7 +35,7 @@ const DEFENSES = [
 
 // --- FIREBASE INITIALIZATION ---
 // Using environment-provided config to prevent API key errors
-const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+const firebaseConfig = JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'enl-draft-v20';
 
 const app = initializeApp(firebaseConfig);
