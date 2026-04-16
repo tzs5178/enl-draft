@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, onSnapshot, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import { Trophy, Clock, Shield, RotateCcw, Lock, ChevronRight, ArrowLeftRight } from 'lucide-react';
 
 // --- CONFIG ---
@@ -12,14 +12,14 @@ const TOTAL_PICKS = 16;
 const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1494020176075689986/WEDJVhqheH9aY8VxWBr75s7H1HzOiNK-W_thu1XQ_elUmNqbrs7z6pJNogJsdVuME8G8";
 
 const TEAMS = [
-  { name: "The Golden Path", logo: "https://i.imgur.com/F4wgHz7.png", passcode: "3863", timeZone: "America/New_York" },
-  { name: "Hinkie Sinkie", logo: "https://i.imgur.com/aiOnSde.png", passcode: "5280", timeZone: "America/Denver" },
-  { name: "The Sassy Boys", logo: "https://i.imgur.com/mDVtQsn.png", passcode: "7366", timeZone: "America/New_York" },
-  { name: "Eternal Beans", logo: "https://i.imgur.com/0JY0Tsr.png", passcode: "2326", timeZone: "America/New_York" },
-  { name: "FantaCTE Fooseball Team", logo: "https://i.imgur.com/wb9CZsl.png", passcode: "0420", timeZone: "America/Denver" },
-  { name: "New England Patriots", logo: "https://i.imgur.com/LKwLUM5.png", passcode: "2803", timeZone: "America/New_York" },
-  { name: "Richmond Rebels", logo: "https://i.imgur.com/hDpWB15.png", passcode: "2116", timeZone: "America/New_York" },
-  { name: "This is your team on CTE", logo: "https://i.imgur.com/j4BaAQm.png", passcode: "0302", timeZone: "America/New_York" }
+  { name: "The Golden Path", logo: "https://i.imgur.com/F4wgHz7.png", passcode: "3863", timeZone: "America/New_York", discordMention: "<@323174530283733002>" },
+  { name: "Hinkie Sinkie", logo: "https://i.imgur.com/aiOnSde.png", passcode: "5280", timeZone: "America/Denver", discordMention: "<@1405014411852386334>" },
+  { name: "The Sassy Boys", logo: "https://i.imgur.com/mDVtQsn.png", passcode: "7366", timeZone: "America/New_York", discordMention: "<@240613384045723648>" },
+  { name: "Eternal Beans", logo: "https://i.imgur.com/0JY0Tsr.png", passcode: "2326", timeZone: "America/New_York", discordMention: "<@715743038877466656>" },
+  { name: "FantaCTE Fooseball Team", logo: "https://i.imgur.com/wb9CZsl.png", passcode: "0420", timeZone: "America/Denver", discordMention: "<@621338847392825371>" },
+  { name: "New England Patriots", logo: "https://i.imgur.com/LKwLUM5.png", passcode: "2803", timeZone: "America/New_York", discordMention: "<@338127259510767626>" },
+  { name: "Richmond Rebels", logo: "https://i.imgur.com/hDpWB15.png", passcode: "2116", timeZone: "America/New_York", discordMention: "<@218519122005327874>" },
+  { name: "This is your team on CTE", logo: "https://i.imgur.com/j4BaAQm.png", passcode: "0302", timeZone: "America/New_York", discordMention: "<@621370906396196866>" }
 ];
 
 const DEFENSES = [
@@ -78,6 +78,34 @@ function computeActiveElapsedMs(lastPickTime, now, timeZone) {
   return (now - lastPickTime) - quietMs;
 }
 
+// --- DISCORD HELPERS ---
+// Posts a message to the Discord webhook. All mention strings go in `content` so they ping.
+function sendDiscordMessage(content) {
+  if (!DISCORD_WEBHOOK) return;
+  fetch(DISCORD_WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content })
+  }).catch(() => {});
+}
+
+// Uses a Firestore transaction to atomically claim a notification slot.
+// Returns true if this client "won" (should send the ping), false if already sent.
+async function claimAndNotify(docRef, field, value) {
+  try {
+    await runTransaction(db, async (txn) => {
+      const snap = await txn.get(docRef);
+      const data = snap.data() || {};
+      const notifyData = data.notify || {};
+      if (notifyData[field] === value) throw new Error('already_notified');
+      txn.update(docRef, { [`notify.${field}`]: value });
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // --- FIREBASE INITIALIZATION ---
 // Using environment-provided config to prevent API key errors
 const firebaseConfig = JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG);
@@ -102,6 +130,10 @@ export default function App() {
   // Admin Swap State
   const [swapA, setSwapA] = useState('');
   const [swapB, setSwapB] = useState('');
+
+  // Refs for notification dedup within this client session
+  const wasQuietRef = useRef(false);
+  const sentOneHourForPickRef = useRef(null);
 
   // Handle Auth
   useEffect(() => {
@@ -151,12 +183,33 @@ export default function App() {
     return () => unsubscribe();
   }, [user]);
 
+  // OTC ping: fires when the current pick changes, pings the new OTC owner once per pick.
+  useEffect(() => {
+    if (!draft || !user || draft.currentPick > TOTAL_PICKS) return;
+    // Skip if this pick has already been announced
+    if ((draft.notify?.lastOtcPick ?? -1) === draft.currentPick) return;
+
+    const pickNum = draft.currentPick;
+    const teamName = draft.pickMap[pickNum];
+    const team = TEAMS.find(t => t.name === teamName);
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', 'draft_session');
+
+    claimAndNotify(docRef, 'lastOtcPick', pickNum).then(won => {
+      if (!won) return;
+      const mention = team?.discordMention || '';
+      sendDiscordMessage(`⏰ **Pick #${pickNum}** — **${teamName}** is on the clock! ${mention}`);
+    }).catch(() => {});
+  }, [user, draft?.currentPick, draft?.notify?.lastOtcPick]);
+
   // Timer Effect — counts down active (non-quiet-hours) time within the 12-hour pick window.
   // Quiet hours are 12:00 AM–8:00 AM in the OTC team's local timezone; the clock is paused then.
+  // Also handles resume ping (fires once when 8 AM quiet-hours end) and 1-hour warning ping.
   useEffect(() => {
     if (!draft || draft.currentPick > TOTAL_PICKS) return;
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', 'draft_session');
     const interval = setInterval(() => {
-      const otcTeamName = draft.pickMap[draft.currentPick];
+      const currentPick = draft.currentPick;
+      const otcTeamName = draft.pickMap[currentPick];
       const otcTeam = TEAMS.find(t => t.name === otcTeamName);
       const timeZone = otcTeam?.timeZone || 'America/New_York';
 
@@ -165,8 +218,11 @@ export default function App() {
       const WINDOW_MS = 12 * 3600000;
       const remainingMs = WINDOW_MS - activeElapsedMs;
 
+      const nowQuiet = isInQuietHours(now, timeZone);
+
       if (remainingMs <= 0) {
         setTimeLeft("00:00");
+        wasQuietRef.current = nowQuiet;
         return;
       }
 
@@ -174,10 +230,34 @@ export default function App() {
       const mins = Math.floor((remainingMs % 3600000) / 60000);
       const timeStr = `${hours}h ${mins}m`;
 
-      if (isInQuietHours(now, timeZone)) {
+      if (nowQuiet) {
         setTimeLeft(`PAUSED \u2022 ${timeStr}`);
       } else {
         setTimeLeft(timeStr);
+      }
+
+      // Resume ping: fires exactly once when quiet hours end (transition from quiet → active).
+      if (wasQuietRef.current && !nowQuiet) {
+        if ((draft.notify?.lastResumePick ?? -1) !== currentPick) {
+          const mention = otcTeam?.discordMention || '';
+          claimAndNotify(docRef, 'lastResumePick', currentPick).then(won => {
+            if (!won) return;
+            sendDiscordMessage(`☀️ **Pick #${currentPick}** — Good morning **${otcTeamName}**, your clock has resumed! ${mention}`);
+          }).catch(() => {});
+        }
+      }
+      wasQuietRef.current = nowQuiet;
+
+      // 1-hour remaining ping: fires once when active clock time drops to ≤ 1 hour.
+      if (!nowQuiet && remainingMs <= 3600000 && sentOneHourForPickRef.current !== currentPick) {
+        if ((draft.notify?.lastOneHourPick ?? -1) !== currentPick) {
+          sentOneHourForPickRef.current = currentPick;
+          const mention = otcTeam?.discordMention || '';
+          claimAndNotify(docRef, 'lastOneHourPick', currentPick).then(won => {
+            if (!won) return;
+            sendDiscordMessage(`⚠️ **Pick #${currentPick}** — **${otcTeamName}** has 1 hour of clock time remaining! ${mention}`);
+          }).catch(() => {});
+        }
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -228,8 +308,8 @@ export default function App() {
     if (swapA === swapB) return;
 
     const newPickMap = { ...draft.pickMap };
-    const teamA = newPickMap[swapA];
-    const teamB = newPickMap[swapB];
+    const teamA = newPickMap[swapA]; // current team at slot swapA → will move to swapB
+    const teamB = newPickMap[swapB]; // current team at slot swapB → will move to swapA
 
     newPickMap[swapA] = teamB;
     newPickMap[swapB] = teamA;
@@ -239,6 +319,17 @@ export default function App() {
       await updateDoc(docRef, { pickMap: newPickMap });
       setSwapA('');
       setSwapB('');
+
+      // Ping both owners about the swap (teamB is now at swapA, teamA is now at swapB)
+      const teamObjForSlotA = TEAMS.find(t => t.name === teamB);
+      const teamObjForSlotB = TEAMS.find(t => t.name === teamA);
+      const mentionA = teamObjForSlotA?.discordMention || '';
+      const mentionB = teamObjForSlotB?.discordMention || '';
+      sendDiscordMessage(
+        `🔄 **Draft slots swapped!**\n` +
+        `Pick #${swapA} → **${teamB}** ${mentionA}\n` +
+        `Pick #${swapB} → **${teamA}** ${mentionB}`
+      );
     } catch (err) {
       console.error("Error swapping slots:", err);
     }
