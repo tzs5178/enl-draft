@@ -33,6 +33,8 @@ const DEFENSES = [
   { id: 'ATL', name: 'Atlanta Falcons' }, { id: 'ARI', name: 'Arizona Cardinals' }
 ];
 
+const pad2 = (n) => String(n).padStart(2, '0');
+
 // --- QUIET HOURS HELPERS ---
 // Returns true if the timestamp falls within 00:00–08:00 (local) for the given IANA timezone.
 function isInQuietHours(ts, timeZone) {
@@ -221,14 +223,16 @@ export default function App() {
       const nowQuiet = isInQuietHours(now, timeZone);
 
       if (remainingMs <= 0) {
-        setTimeLeft("00:00");
+        setTimeLeft("00:00:00");
         wasQuietRef.current = nowQuiet;
         return;
       }
 
-      const hours = Math.floor(remainingMs / 3600000);
-      const mins = Math.floor((remainingMs % 3600000) / 60000);
-      const timeStr = `${hours}h ${mins}m`;
+      const totalSeconds = Math.floor(remainingMs / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const mins = Math.floor((totalSeconds % 3600) / 60);
+      const secs = totalSeconds % 60;
+      const timeStr = `${hours}:${pad2(mins)}:${pad2(secs)}`;
 
       if (nowQuiet) {
         setTimeLeft(`PAUSED \u2022 ${timeStr}`);
