@@ -645,10 +645,10 @@ export default function App() {
                       ? 'bg-black/70 border-yellow-500/20' 
                       : pickNum === draft.currentPick 
                         ? 'bg-[#022240]/60 border-[#ee9c02] shadow-[0_0_18px_rgba(238,156,2,0.35)]'
-                        : 'bg-[#022240]/50 border-white/15'
+                        : 'bg-[#022240]/30 border-white/20'
                     }`}
                   >
-                    <span className="absolute top-3 left-4 text-[9px] font-black text-white/80">#{pickNum}</span>
+                    <span className="absolute top-3 left-4 text-[9px] font-black text-white" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.75)" }}>#{pickNum}</span>
                     {/* Sweep overlay for current pick */}
                     {!pick && pickNum === draft.currentPick && (
                       <div className="animate-sweep pointer-events-none absolute inset-0" />
@@ -661,7 +661,7 @@ export default function App() {
                     ) : (
                       <>
                         <img src={assignedTeam?.logo} className="w-8 h-8 opacity-90 mb-2 drop-shadow-[0_6px_18px_rgba(0,0,0,0.55)]" alt="" />
-                        <div className="text-[7px] font-black uppercase text-center text-white/85 line-clamp-1">{assignedTeam?.name}</div>
+                        <div className="text-[9px] font-black uppercase text-center text-white tracking-wide line-clamp-2" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.85)" }}>{assignedTeam?.name}</div>
                       </>
                     )}
                   </div>
