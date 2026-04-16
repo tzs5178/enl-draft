@@ -35,6 +35,18 @@ const DEFENSES = [
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
+// Parses "H:MM:SS" or "MM:SS" into milliseconds. Returns null if invalid.
+function parseHmsToMs(hms) {
+  const parts = String(hms).trim().split(':').map(Number);
+  if (parts.some(n => Number.isNaN(n))) return null;
+  let h = 0, m = 0, s = 0;
+  if (parts.length === 3) { [h, m, s] = parts; }
+  else if (parts.length === 2) { [m, s] = parts; }
+  else return null;
+  if (h < 0 || m < 0 || m > 59 || s < 0 || s > 59) return null;
+  return ((h * 3600) + (m * 60) + s) * 1000;
+}
+
 // --- QUIET HOURS HELPERS ---
 // Returns true if the timestamp falls within 00:00–08:00 (local) for the given IANA timezone.
 function isInQuietHours(ts, timeZone) {
@@ -133,9 +145,15 @@ export default function App() {
   const [swapA, setSwapA] = useState('');
   const [swapB, setSwapB] = useState('');
 
+  // Admin Clock Override State (Sassy Boys only)
+  const [overrideHms, setOverrideHms] = useState('1:00:00');
+  const [overrideMinutesDelta, setOverrideMinutesDelta] = useState(10);
+
   // Refs for notification dedup within this client session
   const wasQuietRef = useRef(false);
   const sentOneHourForPickRef = useRef(null);
+  // Tracks current effective remaining ms (updated each timer tick) for +/- buttons
+  const currentEffectiveRemainingMsRef = useRef(0);
 
   // Handle Auth
   useEffect(() => {
@@ -203,6 +221,15 @@ export default function App() {
     }).catch(() => {});
   }, [user, draft?.currentPick, draft?.notify?.lastOtcPick]);
 
+  // Auto-clear clockOverride when currentPick advances to a new pick.
+  useEffect(() => {
+    if (!draft || !user) return;
+    if (draft.clockOverride && draft.clockOverride.pickNumber !== draft.currentPick) {
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', 'draft_session');
+      updateDoc(docRef, { clockOverride: null }).catch(() => {});
+    }
+  }, [draft?.currentPick, user]);
+
   // Timer Effect — counts down active (non-quiet-hours) time within the 12-hour pick window.
   // Quiet hours are 12:00 AM–8:00 AM in the OTC team's local timezone; the clock is paused then.
   // Also handles resume ping (fires once when 8 AM quiet-hours end) and 1-hour warning ping.
@@ -220,15 +247,21 @@ export default function App() {
       const WINDOW_MS = 12 * 3600000;
       const remainingMs = WINDOW_MS - activeElapsedMs;
 
+      // If admin has set a clock override for this pick, use it as the effective remaining.
+      const effectiveRemainingMs = draft.clockOverride?.pickNumber === currentPick
+        ? draft.clockOverride.activeRemainingMs
+        : remainingMs;
+      currentEffectiveRemainingMsRef.current = effectiveRemainingMs;
+
       const nowQuiet = isInQuietHours(now, timeZone);
 
-      if (remainingMs <= 0) {
+      if (effectiveRemainingMs <= 0) {
         setTimeLeft("00:00:00");
         wasQuietRef.current = nowQuiet;
         return;
       }
 
-      const totalSeconds = Math.floor(remainingMs / 1000);
+      const totalSeconds = Math.floor(effectiveRemainingMs / 1000);
       const hours = Math.floor(totalSeconds / 3600);
       const mins = Math.floor((totalSeconds % 3600) / 60);
       const secs = totalSeconds % 60;
@@ -252,8 +285,9 @@ export default function App() {
       }
       wasQuietRef.current = nowQuiet;
 
-      // 1-hour remaining ping: fires once when active clock time drops to ≤ 1 hour.
-      if (!nowQuiet && remainingMs <= 3600000 && sentOneHourForPickRef.current !== currentPick) {
+      // 1-hour remaining ping: fires once when active clock time drops below 1 hour.
+      // Uses strict < to avoid firing immediately when admin sets override to exactly 1:00:00.
+      if (!nowQuiet && effectiveRemainingMs < 3600000 && sentOneHourForPickRef.current !== currentPick) {
         if ((draft.notify?.lastOneHourPick ?? -1) !== currentPick) {
           sentOneHourForPickRef.current = currentPick;
           const mention = otcTeam?.discordMention || '';
@@ -348,6 +382,23 @@ export default function App() {
       picks: newPicks,
       currentPick: draft.currentPick - 1
     });
+  };
+
+  // Sets (or replaces) the clock override for the current pick. Admin-only (The Sassy Boys).
+  const setClockOverrideRemainingMs = async (activeRemainingMs) => {
+    if (!draft || !user) return;
+    if (TEAMS[myTeamIdx]?.name !== ADMIN_TEAM_NAME) return;
+    const WINDOW_MS = 12 * 3600000;
+    const clamped = Math.max(0, Math.min(WINDOW_MS, activeRemainingMs));
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', 'draft_session');
+    await updateDoc(docRef, {
+      clockOverride: {
+        pickNumber: draft.currentPick,
+        activeRemainingMs: clamped,
+        setByTeam: TEAMS[myTeamIdx].name,
+        setAt: Date.now(),
+      }
+    }).catch((err) => console.error("Clock override error", err));
   };
 
   const resetBoard = async () => {
@@ -655,6 +706,81 @@ export default function App() {
                 </button>
               </div>
             </div>
+
+            {isAdmin && draft.currentPick <= TOTAL_PICKS && (
+              <div className="bg-slate-900 border border-yellow-500/20 p-8 rounded-[2.5rem]">
+                <h2 className="text-lg font-black uppercase italic text-yellow-500 mb-6 flex items-center gap-2">
+                  <Clock size={20} /> Clock Override
+                </h2>
+
+                {draft.clockOverride?.pickNumber === draft.currentPick && (
+                  <div className="text-xs text-slate-400 mb-5 bg-black/30 px-4 py-2 rounded-xl">
+                    Active override: <span className="text-yellow-400 font-mono font-bold">{
+                      (() => {
+                        const ms = draft.clockOverride.activeRemainingMs;
+                        const s = Math.floor(ms / 1000);
+                        return `${Math.floor(s / 3600)}:${pad2(Math.floor((s % 3600) / 60))}:${pad2(s % 60)}`;
+                      })()
+                    }</span> remaining
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="text-[9px] font-black text-slate-500 uppercase w-36">Set remaining (H:MM:SS)</label>
+                    <input
+                      value={overrideHms}
+                      onChange={(e) => setOverrideHms(e.target.value)}
+                      className="bg-black border border-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-yellow-500 w-28 font-mono"
+                      placeholder="1:00:00"
+                    />
+                    <button
+                      onClick={() => {
+                        const ms = parseHmsToMs(overrideHms);
+                        if (ms === null) { alert('Invalid time — use H:MM:SS (e.g. 1:15:00)'); return; }
+                        setClockOverrideRemainingMs(ms);
+                      }}
+                      className="bg-yellow-500 hover:bg-yellow-400 text-black font-black px-5 py-2 rounded-xl text-xs uppercase transition-all active:scale-95"
+                    >
+                      Apply
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="text-[9px] font-black text-slate-500 uppercase w-36">+/- minutes</label>
+                    <input
+                      type="number"
+                      value={overrideMinutesDelta}
+                      onChange={(e) => setOverrideMinutesDelta(Math.max(1, Number(e.target.value)))}
+                      className="bg-black border border-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-yellow-500 w-20"
+                      min="1"
+                    />
+                    <button
+                      onClick={() => {
+                        const base = draft.clockOverride?.pickNumber === draft.currentPick
+                          ? draft.clockOverride.activeRemainingMs
+                          : currentEffectiveRemainingMsRef.current;
+                        setClockOverrideRemainingMs(base + overrideMinutesDelta * 60000);
+                      }}
+                      className="bg-slate-700 hover:bg-slate-600 text-white font-black px-5 py-2 rounded-xl text-xs uppercase transition-all active:scale-95"
+                    >
+                      +{overrideMinutesDelta}m
+                    </button>
+                    <button
+                      onClick={() => {
+                        const base = draft.clockOverride?.pickNumber === draft.currentPick
+                          ? draft.clockOverride.activeRemainingMs
+                          : currentEffectiveRemainingMsRef.current;
+                        setClockOverrideRemainingMs(base - overrideMinutesDelta * 60000);
+                      }}
+                      className="bg-slate-700 hover:bg-slate-600 text-white font-black px-5 py-2 rounded-xl text-xs uppercase transition-all active:scale-95"
+                    >
+                      -{overrideMinutesDelta}m
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
