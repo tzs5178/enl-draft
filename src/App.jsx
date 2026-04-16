@@ -508,7 +508,7 @@ export default function App() {
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
-                    activeTab === tab ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'text-white/80 hover:text-white'
+                    activeTab === tab ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'text-white hover:text-red-500'
                   }`}
                 >
                   {tab}
