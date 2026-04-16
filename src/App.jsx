@@ -502,10 +502,10 @@ export default function App() {
           <div className="flex items-center gap-4">
             <img src={LEAGUE_LOGO} className="w-12 h-12" alt="ENL" />
             <div>
-              <h1 className="text-xl font-black italic uppercase tracking-tighter">ENL D/ST Draft</h1>
+              <h1 className="text-xl font-black italic uppercase tracking-tighter text-white">ENL D/ST Draft</h1>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <span className="text-[8px] uppercase text-white/60 font-bold">Live System v2.0</span>
+                <span className="text-[8px] uppercase text-white font-bold">Live System v2.0</span>
               </div>
             </div>
           </div>
@@ -546,7 +546,7 @@ export default function App() {
               }`}>
                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Trophy size={100} /></div>
                 <div>
-                  <div className="text-[10px] font-black text-white/70 uppercase tracking-widest mb-1 flex items-center gap-2">
+                  <div className="text-[10px] font-black text-white uppercase tracking-widest mb-1 flex items-center gap-2">
                     <Shield size={12} className="text-yellow-500" /> Currently Picking
                   </div>
                   <div className="text-3xl font-black italic uppercase text-yellow-500 truncate max-w-md">
@@ -583,7 +583,7 @@ export default function App() {
                         />
                         <div>
                           <div className="text-xs font-black uppercase text-white">{def.name}</div>
-                          <div className="text-[9px] font-bold text-white/70 uppercase tracking-tight">{def.id}</div>
+                          <div className="text-[9px] font-bold text-white uppercase tracking-tight">{def.id}</div>
                         </div>
                       </div>
                       {!pick && (isMyTurn || isAdmin) && (
@@ -602,7 +602,7 @@ export default function App() {
 
             {/* Recent Activity */}
             <aside className="bg-slate-900/50 border border-white/5 rounded-[2.5rem] p-8 h-fit lg:sticky lg:top-8">
-              <h3 className="text-[11px] font-black uppercase text-slate-500 mb-8 border-b border-white/5 pb-4 tracking-widest flex items-center gap-2">
+              <h3 className="text-[11px] font-black uppercase text-white mb-8 border-b border-white/5 pb-4 tracking-widest flex items-center gap-2">
                 <ChevronRight size={14} /> Feed
               </h3>
               <div className="space-y-6">
@@ -655,12 +655,12 @@ export default function App() {
                     )}
                     {pick ? (
                       <>
-                        <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${pick.nflTeam.id.toLowerCase()}.png`} className="w-14 h-14 mb-3" alt="" />
+                        <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${pick.nflTeam.id.toLowerCase()}.png`} className="w-14 h-14 mb-3 drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]" alt="" />
                         <div className="text-[8px] font-black uppercase text-center text-white line-clamp-1">{pick.fantasyTeam}</div>
                       </>
                     ) : (
                       <>
-                        <img src={assignedTeam?.logo} className="w-8 h-8 opacity-20 grayscale mb-2" alt="" />
+                        <img src={assignedTeam?.logo} className="w-8 h-8 opacity-50 mb-2" alt="" />
                         <div className="text-[7px] font-black uppercase text-center text-white/60 line-clamp-1">{assignedTeam?.name}</div>
                       </>
                     )}
