@@ -368,7 +368,9 @@ export default function App() {
         const nextTeam = TEAMS.find(t => t.name === nextTeamName);
         const otcMention = nextTeam?.discordMention || nextTeamName || '';
         const timeZone = nextTeam?.timeZone || 'America/New_York';
-        const logoUrl = `https://a.espncdn.com/i/teamlogos/nfl/500/${nflTeam.id.toLowerCase()}.png`;
+        const dstLogoUrl = `https://a.espncdn.com/i/teamlogos/nfl/500/${nflTeam.id.toLowerCase()}.png`;
+        const fantasyTeamObj = TEAMS.find(t => t.name === fantasyTeam);
+        const fantasyTeamLogo = fantasyTeamObj?.logo || LEAGUE_LOGO;
 
         const embedFields = [];
         if (nextTeamName) {
@@ -383,9 +385,10 @@ export default function App() {
           body: JSON.stringify({
             content: nextTeamName ? otcMention : '',
             embeds: [{
+              author: { name: fantasyTeam, icon_url: fantasyTeamLogo },
               title: `Pick #${pNum} is IN!`,
               description: `**${fantasyTeam}** drafted the **${nflTeam.name}** D/ST`,
-              thumbnail: { url: logoUrl },
+              thumbnail: { url: dstLogoUrl },
               fields: embedFields,
               color: 0xfbbf24
             }]
