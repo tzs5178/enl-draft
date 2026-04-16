@@ -12,14 +12,14 @@ const TOTAL_PICKS = 16;
 const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1494020176075689986/WEDJVhqheH9aY8VxWBr75s7H1HzOiNK-W_thu1XQ_elUmNqbrs7z6pJNogJsdVuME8G8";
 
 const TEAMS = [
-  { name: "The Golden Path", logo: "https://i.imgur.com/F4wgHz7.png", passcode: "3863" },
-  { name: "Hinkie Sinkie", logo: "https://i.imgur.com/aiOnSde.png", passcode: "5280" },
-  { name: "The Sassy Boys", logo: "https://i.imgur.com/mDVtQsn.png", passcode: "7366" },
-  { name: "Eternal Beans", logo: "https://i.imgur.com/0JY0Tsr.png", passcode: "2326" },
-  { name: "FantaCTE Fooseball Team", logo: "https://i.imgur.com/wb9CZsl.png", passcode: "0420" },
-  { name: "New England Patriots", logo: "https://i.imgur.com/LKwLUM5.png", passcode: "2803" },
-  { name: "Richmond Rebels", logo: "https://i.imgur.com/hDpWB15.png", passcode: "2116" },
-  { name: "This is your team on CTE", logo: "https://i.imgur.com/j4BaAQm.png", passcode: "0302" }
+  { name: "The Golden Path", logo: "https://i.imgur.com/F4wgHz7.png", passcode: "3863", timeZone: "America/New_York" },
+  { name: "Hinkie Sinkie", logo: "https://i.imgur.com/aiOnSde.png", passcode: "5280", timeZone: "America/Denver" },
+  { name: "The Sassy Boys", logo: "https://i.imgur.com/mDVtQsn.png", passcode: "7366", timeZone: "America/New_York" },
+  { name: "Eternal Beans", logo: "https://i.imgur.com/0JY0Tsr.png", passcode: "2326", timeZone: "America/New_York" },
+  { name: "FantaCTE Fooseball Team", logo: "https://i.imgur.com/wb9CZsl.png", passcode: "0420", timeZone: "America/Denver" },
+  { name: "New England Patriots", logo: "https://i.imgur.com/LKwLUM5.png", passcode: "2803", timeZone: "America/New_York" },
+  { name: "Richmond Rebels", logo: "https://i.imgur.com/hDpWB15.png", passcode: "2116", timeZone: "America/New_York" },
+  { name: "This is your team on CTE", logo: "https://i.imgur.com/j4BaAQm.png", passcode: "0302", timeZone: "America/New_York" }
 ];
 
 const DEFENSES = [
@@ -32,6 +32,51 @@ const DEFENSES = [
   { id: 'CHI', name: 'Chicago Bears' }, { id: 'CAR', name: 'Carolina Panthers' },
   { id: 'ATL', name: 'Atlanta Falcons' }, { id: 'ARI', name: 'Arizona Cardinals' }
 ];
+
+// --- QUIET HOURS HELPERS ---
+// Returns true if the timestamp falls within 00:00–08:00 (local) for the given IANA timezone.
+function isInQuietHours(ts, timeZone) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: '2-digit',
+      hour12: false
+    }).formatToParts(new Date(ts));
+    const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
+    const hour = h === 24 ? 0 : h; // some implementations return 24 for midnight
+    return hour < 8;
+  } catch {
+    return false;
+  }
+}
+
+// Returns the number of milliseconds of "active" (non-quiet-hours) time in [lastPickTime, now].
+// Iterates in 1-minute steps; at most 720 steps for a 12-hour window — negligible cost.
+function computeActiveElapsedMs(lastPickTime, now, timeZone) {
+  const STEP = 60000; // 1 minute
+  let quietMs = 0;
+  let t = lastPickTime;
+
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour: '2-digit',
+    hour12: false
+  });
+
+  while (t < now) {
+    const stepEnd = Math.min(t + STEP, now);
+    const mid = (t + stepEnd) / 2;
+    const parts = fmt.formatToParts(new Date(mid));
+    const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
+    const hour = h === 24 ? 0 : h;
+    if (hour < 8) {
+      quietMs += stepEnd - t;
+    }
+    t = stepEnd;
+  }
+
+  return (now - lastPickTime) - quietMs;
+}
 
 // --- FIREBASE INITIALIZATION ---
 // Using environment-provided config to prevent API key errors
@@ -106,18 +151,33 @@ export default function App() {
     return () => unsubscribe();
   }, [user]);
 
-  // Timer Effect
+  // Timer Effect — counts down active (non-quiet-hours) time within the 12-hour pick window.
+  // Quiet hours are 12:00 AM–8:00 AM in the OTC team's local timezone; the clock is paused then.
   useEffect(() => {
     if (!draft || draft.currentPick > TOTAL_PICKS) return;
     const interval = setInterval(() => {
-      const deadline = draft.lastPickTime + (12 * 3600000); // 12h window
-      const diff = deadline - Date.now();
-      if (diff <= 0) {
+      const otcTeamName = draft.pickMap[draft.currentPick];
+      const otcTeam = TEAMS.find(t => t.name === otcTeamName);
+      const timeZone = otcTeam?.timeZone || 'America/New_York';
+
+      const now = Date.now();
+      const activeElapsedMs = computeActiveElapsedMs(draft.lastPickTime, now, timeZone);
+      const WINDOW_MS = 12 * 3600000;
+      const remainingMs = WINDOW_MS - activeElapsedMs;
+
+      if (remainingMs <= 0) {
         setTimeLeft("00:00");
+        return;
+      }
+
+      const hours = Math.floor(remainingMs / 3600000);
+      const mins = Math.floor((remainingMs % 3600000) / 60000);
+      const timeStr = `${hours}h ${mins}m`;
+
+      if (isInQuietHours(now, timeZone)) {
+        setTimeLeft(`PAUSED \u2022 ${timeStr}`);
       } else {
-        const hours = Math.floor(diff / 3600000);
-        const mins = Math.floor((diff % 3600000) / 60000);
-        setTimeLeft(`${hours}h ${mins}m`);
+        setTimeLeft(timeStr);
       }
     }, 1000);
     return () => clearInterval(interval);
