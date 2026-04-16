@@ -92,6 +92,36 @@ function computeActiveElapsedMs(lastPickTime, now, timeZone) {
   return (now - lastPickTime) - quietMs;
 }
 
+// Returns the wall-clock Unix timestamp (ms) at which 12 hours of active (non-quiet-hours) time
+// will have elapsed since pickTime, using the given IANA timezone (quiet hours = 0–8 am).
+// Iterates in 1-minute steps; at most ~4320 steps in the worst case — negligible cost.
+function computeDeadlineMs(pickTime, timeZone) {
+  const WINDOW_MS = 12 * 3600000;
+  const STEP = 60000; // 1 minute
+  let t = pickTime;
+  let activeMs = 0;
+
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour: '2-digit',
+    hour12: false
+  });
+
+  while (activeMs < WINDOW_MS) {
+    const stepEnd = t + STEP;
+    const mid = (t + stepEnd) / 2;
+    const parts = fmt.formatToParts(new Date(mid));
+    const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
+    const hour = h === 24 ? 0 : h;
+    if (hour >= 8) {
+      activeMs += STEP;
+    }
+    t = stepEnd;
+  }
+
+  return t;
+}
+
 // --- DISCORD HELPERS ---
 // Posts a message to the Discord webhook. All mention strings go in `content` so they ping.
 function sendDiscordMessage(content) {
@@ -322,21 +352,43 @@ export default function App() {
     if (!user) return;
     const pNum = draft.currentPick;
     const fantasyTeam = bypass ? draft.pickMap[pNum] : TEAMS[myTeamIdx].name;
+    const pickTime = Date.now();
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', 'draft_session');
 
     try {
       await updateDoc(docRef, {
         picks: arrayUnion({ pickNumber: pNum, fantasyTeam, nflTeam }),
         currentPick: pNum + 1,
-        lastPickTime: Date.now()
+        lastPickTime: pickTime
       });
 
       if (DISCORD_WEBHOOK) {
+        const nextPickNum = pNum + 1;
+        const nextTeamName = draft.pickMap[nextPickNum];
+        const nextTeam = TEAMS.find(t => t.name === nextTeamName);
+        const otcMention = nextTeam?.discordMention || nextTeamName || '';
+        const timeZone = nextTeam?.timeZone || 'America/New_York';
+        const logoUrl = `https://a.espncdn.com/i/teamlogos/nfl/500/${nflTeam.id.toLowerCase()}.png`;
+
+        const embedFields = [];
+        if (nextTeamName) {
+          const deadlineSec = Math.floor(computeDeadlineMs(pickTime, timeZone) / 1000);
+          embedFields.push({ name: '🏈 On the Clock', value: otcMention, inline: true });
+          embedFields.push({ name: '⏰ Deadline', value: `<t:${deadlineSec}:f>`, inline: true });
+        }
+
         fetch(DISCORD_WEBHOOK, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            content: `📢 **${fantasyTeam}** has drafted the **${nflTeam.name}**!`
+            content: nextTeamName ? otcMention : '',
+            embeds: [{
+              title: `Pick #${pNum} is IN!`,
+              description: `**${fantasyTeam}** drafted the **${nflTeam.name}** D/ST`,
+              thumbnail: { url: logoUrl },
+              fields: embedFields,
+              color: 0xfbbf24
+            }]
           })
         }).catch(() => {});
       }
