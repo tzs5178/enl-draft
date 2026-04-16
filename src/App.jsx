@@ -528,7 +528,7 @@ export default function App() {
 
           <button 
             onClick={() => { localStorage.clear(); window.location.reload(); }}
-            className="text-[8px] font-black uppercase text-slate-700 hover:text-red-500 transition-colors"
+            className="text-[8px] font-black uppercase text-white/40 hover:text-red-500 transition-colors"
           >
             Logout
           </button>
@@ -648,7 +648,7 @@ export default function App() {
                         : 'bg-slate-950 border-white/5 opacity-40'
                     }`}
                   >
-                    <span className="absolute top-3 left-4 text-[9px] font-black text-slate-700">#{pickNum}</span>
+                    <span className="absolute top-3 left-4 text-[9px] font-black text-white/40">#{pickNum}</span>
                     {/* Sweep overlay for current pick */}
                     {!pick && pickNum === draft.currentPick && (
                       <div className="animate-sweep pointer-events-none absolute inset-0" />
@@ -661,7 +661,7 @@ export default function App() {
                     ) : (
                       <>
                         <img src={assignedTeam?.logo} className="w-8 h-8 opacity-20 grayscale mb-2" alt="" />
-                        <div className="text-[7px] font-black uppercase text-center text-slate-700 line-clamp-1">{assignedTeam?.name}</div>
+                        <div className="text-[7px] font-black uppercase text-center text-white/40 line-clamp-1">{assignedTeam?.name}</div>
                       </>
                     )}
                   </div>
@@ -691,7 +691,7 @@ export default function App() {
                       ))}
                     </select>
                  </div>
-                 <div className="text-slate-700 pt-5"><ArrowLeftRight size={24} /></div>
+                 <div className="text-slate-500 pt-5"><ArrowLeftRight size={24} /></div>
                  <div className="flex-1 w-full">
                     <label className="text-[9px] font-black text-slate-500 uppercase mb-2 block">Second Slot</label>
                     <select 
