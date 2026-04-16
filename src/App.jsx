@@ -691,7 +691,7 @@ export default function App() {
                       ))}
                     </select>
                  </div>
-                 <div className="text-slate-700 pt-5"><ArrowLeftRight size={24} /></div>
+                 <div className="text-slate-500 pt-5"><ArrowLeftRight size={24} /></div>
                  <div className="flex-1 w-full">
                     <label className="text-[9px] font-black text-slate-500 uppercase mb-2 block">Second Slot</label>
                     <select 
