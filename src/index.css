@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ESPN broadcast theme overlays */
+.bg-esn-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(255, 255, 255, 0.012) 3px,
+    rgba(255, 255, 255, 0.012) 4px
+  );
+}
+
+@keyframes sweep {
+  0%   { transform: translateX(-100%) skewX(-20deg); opacity: 0; }
+  40%  { opacity: 1; }
+  100% { transform: translateX(200%) skewX(-20deg); opacity: 0; }
+}
+
+.animate-sweep {
+  animation: sweep 2.4s ease-in-out infinite;
+  background: linear-gradient(105deg, transparent 30%, rgba(238, 156, 2, 0.18) 50%, transparent 70%);
+  border-radius: inherit;
+}

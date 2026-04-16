@@ -485,8 +485,17 @@ export default function App() {
   const isMyTurn = TEAMS[myTeamIdx].name === otcName;
   const isAdmin = TEAMS[myTeamIdx].name === ADMIN_TEAM_NAME;
 
+  const isPaused = timeLeft.startsWith('PAUSED');
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8">
+    <div className="relative min-h-screen text-slate-200 overflow-hidden" style={{ background: 'linear-gradient(160deg, #022240 0%, #010d1a 60%, #000000 100%)' }}>
+      {/* Radial glow — blue */}
+      <div className="pointer-events-none absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #064b7f 0%, transparent 70%)' }} />
+      {/* Radial glow — gold */}
+      <div className="pointer-events-none absolute top-1/3 -right-32 w-[500px] h-[500px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #ee9c02 0%, transparent 70%)' }} />
+      {/* Scanline / noise overlay */}
+      <div className="bg-esn-scanlines pointer-events-none absolute inset-0" style={{ zIndex: 0 }} />
+      <div className="relative z-10 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <header className="flex flex-col md:flex-row justify-between items-center bg-slate-900/50 p-6 rounded-[2.5rem] border border-white/5 mb-8 gap-6">
@@ -530,7 +539,11 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               {/* OTC Status */}
-              <div className="bg-slate-900 border border-white/5 rounded-[2.5rem] p-8 mb-8 flex flex-col md:flex-row justify-between items-center relative overflow-hidden">
+              <div className={`rounded-[2.5rem] p-8 mb-8 flex flex-col md:flex-row justify-between items-center relative overflow-hidden transition-all ${
+                isPaused
+                  ? 'bg-[#022240]/80 border border-[#064b7f]/40'
+                  : 'bg-slate-900 border border-[#ee9c02]/40 shadow-[0_0_32px_rgba(238,156,2,0.15)]'
+              }`}>
                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Trophy size={100} /></div>
                 <div>
                   <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-2">
@@ -553,12 +566,15 @@ export default function App() {
                   return (
                     <div 
                       key={def.id}
-                      className={`p-5 rounded-3xl border transition-all flex items-center justify-between ${
+                      className={`p-5 rounded-3xl border transition-all flex items-center justify-between relative ${
                         pick 
-                        ? 'bg-black/40 border-white/5 opacity-30 grayscale pointer-events-none' 
-                        : 'bg-slate-900 border-white/10 hover:border-yellow-500/50 group'
+                        ? 'bg-black/40 border-white/5 opacity-40 grayscale pointer-events-none' 
+                        : 'bg-slate-900 border-white/10 hover:border-[#ee9c02]/60 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(238,156,2,0.12)] group'
                       }`}
                     >
+                      {pick && (
+                        <span className="absolute top-2 right-3 text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-[#b81d0f]/80 text-white">DRAFTED</span>
+                      )}
                       <div className="flex items-center gap-4">
                         <img 
                           src={`https://a.espncdn.com/i/teamlogos/nfl/500/${def.id.toLowerCase()}.png`} 
@@ -624,15 +640,19 @@ export default function App() {
                 return (
                   <div 
                     key={pickNum}
-                    className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center p-4 relative transition-all ${
+                    className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center p-4 relative overflow-hidden transition-all ${
                       pick 
                       ? 'bg-black border-yellow-500/20' 
                       : pickNum === draft.currentPick 
-                        ? 'bg-yellow-500/5 border-yellow-500/50 animate-pulse'
+                        ? 'bg-[#022240]/60 border-[#ee9c02] shadow-[0_0_18px_rgba(238,156,2,0.35)]'
                         : 'bg-slate-950 border-white/5 opacity-40'
                     }`}
                   >
                     <span className="absolute top-3 left-4 text-[9px] font-black text-slate-700">#{pickNum}</span>
+                    {/* Sweep overlay for current pick */}
+                    {!pick && pickNum === draft.currentPick && (
+                      <div className="animate-sweep pointer-events-none absolute inset-0" />
+                    )}
                     {pick ? (
                       <>
                         <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${pick.nflTeam.id.toLowerCase()}.png`} className="w-14 h-14 mb-3" alt="" />
@@ -778,6 +798,7 @@ export default function App() {
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
