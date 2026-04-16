@@ -505,7 +505,7 @@ export default function App() {
               <h1 className="text-xl font-black italic uppercase tracking-tighter">ENL D/ST Draft</h1>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <span className="text-[8px] uppercase text-slate-500 font-bold">Live System v2.0</span>
+                <span className="text-[8px] uppercase text-white/60 font-bold">Live System v2.0</span>
               </div>
             </div>
           </div>
@@ -528,7 +528,7 @@ export default function App() {
 
           <button 
             onClick={() => { localStorage.clear(); window.location.reload(); }}
-            className="text-[8px] font-black uppercase text-slate-700 hover:text-red-500 transition-colors"
+            className="text-[8px] font-black uppercase text-white/60 hover:text-red-500 transition-colors"
           >
             Logout
           </button>
@@ -546,7 +546,7 @@ export default function App() {
               }`}>
                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Trophy size={100} /></div>
                 <div>
-                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-2">
+                  <div className="text-[10px] font-black text-white/70 uppercase tracking-widest mb-1 flex items-center gap-2">
                     <Shield size={12} className="text-yellow-500" /> Currently Picking
                   </div>
                   <div className="text-3xl font-black italic uppercase text-yellow-500 truncate max-w-md">
@@ -554,8 +554,8 @@ export default function App() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 bg-black/40 px-6 py-4 rounded-3xl border border-white/5 mt-6 md:mt-0">
-                  <Clock size={20} className="text-slate-500" />
-                  <span className="text-2xl font-black font-mono text-slate-300 tracking-tighter">{timeLeft}</span>
+                  <Clock size={20} className="text-white/70" />
+                  <span className="text-2xl font-black font-mono text-white tracking-tighter">{timeLeft}</span>
                 </div>
               </div>
 
@@ -582,8 +582,8 @@ export default function App() {
                           alt={def.name}
                         />
                         <div>
-                          <div className="text-xs font-black uppercase text-slate-200">{def.name}</div>
-                          <div className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">{def.id}</div>
+                          <div className="text-xs font-black uppercase text-white">{def.name}</div>
+                          <div className="text-[9px] font-bold text-white/70 uppercase tracking-tight">{def.id}</div>
                         </div>
                       </div>
                       {!pick && (isMyTurn || isAdmin) && (
@@ -648,7 +648,7 @@ export default function App() {
                         : 'bg-slate-950 border-white/5 opacity-40'
                     }`}
                   >
-                    <span className="absolute top-3 left-4 text-[9px] font-black text-slate-700">#{pickNum}</span>
+                    <span className="absolute top-3 left-4 text-[9px] font-black text-white/50">#{pickNum}</span>
                     {/* Sweep overlay for current pick */}
                     {!pick && pickNum === draft.currentPick && (
                       <div className="animate-sweep pointer-events-none absolute inset-0" />
@@ -661,7 +661,7 @@ export default function App() {
                     ) : (
                       <>
                         <img src={assignedTeam?.logo} className="w-8 h-8 opacity-20 grayscale mb-2" alt="" />
-                        <div className="text-[7px] font-black uppercase text-center text-slate-700 line-clamp-1">{assignedTeam?.name}</div>
+                        <div className="text-[7px] font-black uppercase text-center text-white/60 line-clamp-1">{assignedTeam?.name}</div>
                       </>
                     )}
                   </div>
@@ -719,7 +719,7 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button 
                   onClick={undoPick}
-                  className="flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 p-6 rounded-2xl text-xs font-black uppercase transition-all"
+                  className="flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-white p-6 rounded-2xl text-xs font-black uppercase transition-all"
                 >
                   <RotateCcw size={16} /> Undo Last Pick
                 </button>
