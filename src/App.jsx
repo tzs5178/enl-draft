@@ -247,10 +247,15 @@ export default function App() {
       const WINDOW_MS = 12 * 3600000;
       const remainingMs = WINDOW_MS - activeElapsedMs;
 
-      // If admin has set a clock override for this pick, use it as the effective remaining.
-      const effectiveRemainingMs = draft.clockOverride?.pickNumber === currentPick
-        ? draft.clockOverride.activeRemainingMs
-        : remainingMs;
+      // If admin has set a clock override for this pick, count down from the stored remaining
+      // using only active (non-quiet-hours) time elapsed since the override was set.
+      let effectiveRemainingMs;
+      if (draft.clockOverride?.pickNumber === currentPick) {
+        const activeElapsedSinceSet = computeActiveElapsedMs(draft.clockOverride.setAt, now, timeZone);
+        effectiveRemainingMs = Math.max(0, draft.clockOverride.activeRemainingMs - activeElapsedSinceSet);
+      } else {
+        effectiveRemainingMs = remainingMs;
+      }
       currentEffectiveRemainingMsRef.current = effectiveRemainingMs;
 
       const nowQuiet = isInQuietHours(now, timeZone);
@@ -715,13 +720,7 @@ export default function App() {
 
                 {draft.clockOverride?.pickNumber === draft.currentPick && (
                   <div className="text-xs text-slate-400 mb-5 bg-black/30 px-4 py-2 rounded-xl">
-                    Active override: <span className="text-yellow-400 font-mono font-bold">{
-                      (() => {
-                        const ms = draft.clockOverride.activeRemainingMs;
-                        const s = Math.floor(ms / 1000);
-                        return `${Math.floor(s / 3600)}:${pad2(Math.floor((s % 3600) / 60))}:${pad2(s % 60)}`;
-                      })()
-                    }</span> remaining
+                    Override active — see main clock for current remaining
                   </div>
                 )}
 
@@ -757,9 +756,7 @@ export default function App() {
                     />
                     <button
                       onClick={() => {
-                        const base = draft.clockOverride?.pickNumber === draft.currentPick
-                          ? draft.clockOverride.activeRemainingMs
-                          : currentEffectiveRemainingMsRef.current;
+                        const base = currentEffectiveRemainingMsRef.current;
                         setClockOverrideRemainingMs(base + overrideMinutesDelta * 60000);
                       }}
                       className="bg-slate-700 hover:bg-slate-600 text-white font-black px-5 py-2 rounded-xl text-xs uppercase transition-all active:scale-95"
@@ -768,9 +765,7 @@ export default function App() {
                     </button>
                     <button
                       onClick={() => {
-                        const base = draft.clockOverride?.pickNumber === draft.currentPick
-                          ? draft.clockOverride.activeRemainingMs
-                          : currentEffectiveRemainingMsRef.current;
+                        const base = currentEffectiveRemainingMsRef.current;
                         setClockOverrideRemainingMs(base - overrideMinutesDelta * 60000);
                       }}
                       className="bg-slate-700 hover:bg-slate-600 text-white font-black px-5 py-2 rounded-xl text-xs uppercase transition-all active:scale-95"
