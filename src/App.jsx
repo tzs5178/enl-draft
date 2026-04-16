@@ -631,7 +631,7 @@ export default function App() {
         )}
 
         {activeTab === 'board' && (
-          <div className="bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] overflow-x-auto scrollbar-hide">
+          <div className="bg-slate-900/50 border border-white/5 p-8 rounded-[2.5rem] overflow-x-auto scrollbar-hide">
             <div className="grid grid-cols-8 gap-4 min-w-[1000px]">
               {Array.from({ length: TOTAL_PICKS }).map((_, i) => {
                 const pickNum = i + 1;
@@ -642,13 +642,13 @@ export default function App() {
                     key={pickNum}
                     className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center p-4 relative overflow-hidden transition-all ${
                       pick 
-                      ? 'bg-black border-yellow-500/20' 
+                      ? 'bg-black/70 border-yellow-500/20' 
                       : pickNum === draft.currentPick 
                         ? 'bg-[#022240]/60 border-[#ee9c02] shadow-[0_0_18px_rgba(238,156,2,0.35)]'
-                        : 'bg-slate-950 border-white/5 opacity-40'
+                        : 'bg-[#022240]/50 border-white/15'
                     }`}
                   >
-                    <span className="absolute top-3 left-4 text-[9px] font-black text-white/50">#{pickNum}</span>
+                    <span className="absolute top-3 left-4 text-[9px] font-black text-white/80">#{pickNum}</span>
                     {/* Sweep overlay for current pick */}
                     {!pick && pickNum === draft.currentPick && (
                       <div className="animate-sweep pointer-events-none absolute inset-0" />
@@ -660,8 +660,8 @@ export default function App() {
                       </>
                     ) : (
                       <>
-                        <img src={assignedTeam?.logo} className="w-8 h-8 opacity-50 mb-2" alt="" />
-                        <div className="text-[7px] font-black uppercase text-center text-white/60 line-clamp-1">{assignedTeam?.name}</div>
+                        <img src={assignedTeam?.logo} className="w-8 h-8 opacity-90 mb-2 drop-shadow-[0_6px_18px_rgba(0,0,0,0.55)]" alt="" />
+                        <div className="text-[7px] font-black uppercase text-center text-white/85 line-clamp-1">{assignedTeam?.name}</div>
                       </>
                     )}
                   </div>
