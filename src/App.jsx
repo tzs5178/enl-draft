@@ -772,8 +772,8 @@ export default function App() {
         )}
 
         {activeTab === 'board' && (
-          <div className="bg-slate-900/50 border border-white/5 p-3 sm:p-8 rounded-xl sm:rounded-[2.5rem] overflow-x-auto scrollbar-hide">
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-4 sm:min-w-[1000px]">
+          <div className="board-container bg-slate-900/50 border border-white/5 p-3 sm:p-8 rounded-xl sm:rounded-[2.5rem] overflow-x-auto scrollbar-hide">
+            <div className="board-grid grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-4 sm:min-w-[1000px]">
               {Array.from({ length: TOTAL_PICKS }, (_, i) => {
                 const round = Math.floor(i / TEAMS_COUNT);
                 const pos = i % TEAMS_COUNT;
@@ -795,7 +795,7 @@ export default function App() {
                 return (
                   <div 
                     key={pickNum}
-                    className={`aspect-square rounded-2xl sm:rounded-3xl border-2 flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden transition-all duration-700 ${
+                    className={`board-card aspect-square rounded-2xl sm:rounded-3xl border-2 flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden transition-all duration-700 ${
                       pick 
                       ? 'bg-slate-800 border-yellow-500/20' 
                       : pickNum === draft.currentPick 
@@ -804,7 +804,7 @@ export default function App() {
                     }${isJustPicked ? ' animate-pick-flash' : ''}`}
                     style={pickedTeamColor ? { backgroundColor: pickedTeamColor } : {}}
                   >
-                    <span className="absolute top-1.5 left-2 sm:top-3 sm:left-4 text-[9px] font-black text-white" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.75)" }}>#{pickNum}</span>
+                    <span className="board-pick-num absolute top-1.5 left-2 sm:top-3 sm:left-4 text-[9px] font-black text-white" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.75)" }}>#{pickNum}</span>
                     {/* Sweep overlay for current pick */}
                     {!pick && pickNum === draft.currentPick && (
                       <div className="animate-sweep pointer-events-none absolute inset-0" />
@@ -822,18 +822,20 @@ export default function App() {
                       </div>
                     )}
                     {/* TODO: On-deck highlight — shade/animate the next-up team's column */}
-                    {pick ? (
-                      <>
-                        <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${pick.nflTeam.id.toLowerCase()}.png`} className="w-10 h-10 sm:w-14 sm:h-14 mb-1 sm:mb-3 drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]" alt="" />
-                        <div className="text-[9px] font-black uppercase text-center text-white break-words line-clamp-2">{pick.fantasyTeam}</div>
-                        {/* TODO: Emoji reactions — display top reactions below team name */}
-                      </>
-                    ) : (
-                      <>
-                        <img src={assignedTeam?.logo} className="w-7 h-7 sm:w-8 sm:h-8 opacity-90 mb-1 sm:mb-2 drop-shadow-[0_6px_18px_rgba(0,0,0,0.55)]" alt="" />
-                        <div className="text-[9px] font-black uppercase text-center text-white tracking-wide break-words line-clamp-2" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.85)" }}>{assignedTeam?.name}</div>
-                      </>
-                    )}
+                    <div className="board-card-body flex flex-col items-center">
+                      {pick ? (
+                        <>
+                          <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${pick.nflTeam.id.toLowerCase()}.png`} className="board-card-logo w-10 h-10 sm:w-14 sm:h-14 mb-1 sm:mb-3 drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]" alt="" />
+                          <div className="board-card-name text-[9px] font-black uppercase text-center text-white break-words line-clamp-2">{pick.fantasyTeam}</div>
+                          {/* TODO: Emoji reactions — display top reactions below team name */}
+                        </>
+                      ) : (
+                        <>
+                          <img src={assignedTeam?.logo} className="board-card-logo w-7 h-7 sm:w-8 sm:h-8 opacity-90 mb-1 sm:mb-2 drop-shadow-[0_6px_18px_rgba(0,0,0,0.55)]" alt="" />
+                          <div className="board-card-name text-[9px] font-black uppercase text-center text-white tracking-wide break-words line-clamp-2" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.85)" }}>{assignedTeam?.name}</div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
