@@ -374,9 +374,14 @@ export default function App() {
         if ((draft.notify?.lastOneHourPick ?? -1) !== currentPick) {
           sentOneHourForPickRef.current = currentPick;
           const mention = otcTeam?.discordMention || '';
+          const nextTeamName = currentPick < TOTAL_PICKS ? draft.pickMap[currentPick + 1] : null;
+          const nextTeam = nextTeamName ? TEAMS.find(t => t.name === nextTeamName) : null;
+          const nextMention = nextTeam?.discordMention || '';
           claimAndNotify(docRef, 'lastOneHourPick', currentPick).then(won => {
             if (!won) return;
-            sendDiscordMessage(`⚠️ **Pick #${currentPick}** — **${otcTeamName}** has 1 hour of clock time remaining! ${mention}`);
+            let msg = `⚠️ **Pick #${currentPick}** — **${otcTeamName}** has 1 hour left! ${mention}`;
+            if (nextTeamName) msg += `\nUp next: **${nextTeamName}** ${nextMention}`;
+            sendDiscordMessage(msg);
           }).catch(() => {});
         }
       }
