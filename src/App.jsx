@@ -633,6 +633,13 @@ export default function App() {
     });
   };
 
+  // Recent picks ticker — last 5 picks in descending order.
+  // Must be declared here (before any early returns) to satisfy Rules of Hooks.
+  const recentPicks = useMemo(
+    () => [...(draft?.picks || [])].sort((a, b) => b.pickNumber - a.pickNumber).slice(0, 5),
+    [draft?.picks]
+  );
+
   if (!user || !draft) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-yellow-500">
@@ -697,12 +704,6 @@ export default function App() {
   const isPaused = timeLeft.startsWith('PAUSED');
   const otcTeam = TEAMS.find(t => t.name === otcName);
   const isClockUrgent = clockRemainingMs !== null && clockRemainingMs < 3600000 && !isPaused;
-
-  // Recent picks ticker — last 5 picks in descending order
-  const recentPicks = useMemo(
-    () => [...(draft.picks || [])].sort((a, b) => b.pickNumber - a.pickNumber).slice(0, 5),
-    [draft.picks]
-  );
 
   return (
     <div className="relative min-h-screen text-slate-200 overflow-hidden" style={{ background: 'linear-gradient(160deg, #022240 0%, #010d1a 60%, #000000 100%)' }}>
