@@ -375,15 +375,15 @@ export default function App() {
         const embedFields = [];
         if (nextTeamName) {
           const deadlineSec = Math.floor(computeDeadlineMs(pickTime, timeZone) / 1000);
-          embedFields.push({ name: '🏈 On the Clock', value: otcMention, inline: true });
-          embedFields.push({ name: '⏰ Deadline', value: `<t:${deadlineSec}:f>`, inline: true });
+          embedFields.push({ name: '🏈 On the Clock', value: `**${nextTeamName}** ${otcMention}`, inline: true });
+          embedFields.push({ name: '⏰ Deadline', value: `**<t:${deadlineSec}:f>**`, inline: true });
         }
 
         fetch(DISCORD_WEBHOOK, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            content: nextTeamName ? otcMention : '',
+            content: nextTeamName ? `🏈 **${nextTeamName}** is on the clock! ${otcMention}` : '',
             embeds: [{
               author: { name: fantasyTeam, icon_url: fantasyTeamLogo },
               title: `Pick #${pNum} is IN!`,
