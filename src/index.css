@@ -98,6 +98,28 @@
   animation: onDeckPulse 2s ease-in-out infinite;
 }
 
+/* Recent picks ticker — new entry slides in from left */
+@keyframes tickerSlideIn {
+  0%   { transform: translateX(-24px) scale(0.92); opacity: 0; }
+  60%  { transform: translateX(4px) scale(1.03); opacity: 1; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+.animate-ticker-slide-in {
+  animation: tickerSlideIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Who's Online — avatar dot pulse for newly-joined user */
+@keyframes presencePop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-presence-pop {
+  animation: presencePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
 /* ===== Mobile draft board layout (≤600px) ===== */
 @media (max-width: 600px) {
   /* Container: disable horizontal overflow, use normal vertical padding */
