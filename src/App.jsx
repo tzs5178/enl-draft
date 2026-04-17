@@ -23,14 +23,22 @@ const TEAMS = [
 ];
 
 const DEFENSES = [
-  { id: 'TEN', name: 'Tennessee Titans' }, { id: 'TB', name: 'Tampa Bay Buccaneers' },
-  { id: 'NYJ', name: 'New York Jets' }, { id: 'NO', name: 'New Orleans Saints' },
-  { id: 'MIA', name: 'Miami Dolphins' }, { id: 'LV', name: 'Las Vegas Raiders' },
-  { id: 'KC', name: 'Kansas Chiefs' }, { id: 'IND', name: 'Indianapolis Colts' },
-  { id: 'GB', name: 'Green Bay Packers' }, { id: 'DAL', name: 'Dallas Cowboys' },
-  { id: 'CLE', name: 'Cleveland Browns' }, { id: 'CIN', name: 'Cincinnati Bengals' },
-  { id: 'CHI', name: 'Chicago Bears' }, { id: 'CAR', name: 'Carolina Panthers' },
-  { id: 'ATL', name: 'Atlanta Falcons' }, { id: 'ARI', name: 'Arizona Cardinals' }
+  { id: 'TEN', name: 'Tennessee Titans',        primary: '#0C2340', secondary: '#4B92DB' },
+  { id: 'TB',  name: 'Tampa Bay Buccaneers',    primary: '#D50A0A', secondary: '#FF7900' },
+  { id: 'NYJ', name: 'New York Jets',           primary: '#125740', secondary: '#000000' },
+  { id: 'NO',  name: 'New Orleans Saints',      primary: '#D3BC8D', secondary: '#101820' },
+  { id: 'MIA', name: 'Miami Dolphins',          primary: '#008E97', secondary: '#FC4C02' },
+  { id: 'LV',  name: 'Las Vegas Raiders',       primary: '#000000', secondary: '#A5ACAF' },
+  { id: 'KC',  name: 'Kansas City Chiefs',      primary: '#E31837', secondary: '#FFB81C' },
+  { id: 'IND', name: 'Indianapolis Colts',      primary: '#003DA5', secondary: '#A5ACAF' },
+  { id: 'GB',  name: 'Green Bay Packers',       primary: '#203731', secondary: '#FFB612' },
+  { id: 'DAL', name: 'Dallas Cowboys',          primary: '#003594', secondary: '#869397' },
+  { id: 'CLE', name: 'Cleveland Browns',        primary: '#FF3C00', secondary: '#311D00' },
+  { id: 'CIN', name: 'Cincinnati Bengals',      primary: '#FB4F14', secondary: '#000000' },
+  { id: 'CHI', name: 'Chicago Bears',           primary: '#0B162A', secondary: '#C83803' },
+  { id: 'CAR', name: 'Carolina Panthers',       primary: '#0085CA', secondary: '#101820' },
+  { id: 'ATL', name: 'Atlanta Falcons',         primary: '#A71930', secondary: '#000000' },
+  { id: 'ARI', name: 'Arizona Cardinals',       primary: '#97233F', secondary: '#FFB612' },
 ];
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -189,6 +197,9 @@ export default function App() {
   const [draftAnimation, setDraftAnimation] = useState(null);
   // -1 = not yet initialized (avoids triggering animation on page load)
   const prevPicksLengthRef = useRef(-1);
+
+  // Tracks which defense card is currently hovered (by NFL team id)
+  const [hoveredDefId, setHoveredDefId] = useState(null);
 
   // Refs for notification dedup within this client session
   const wasQuietRef = useRef(false);
@@ -661,14 +672,24 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {DEFENSES.map((def) => {
                   const pick = draft.picks.find(p => p.nflTeam.id === def.id);
+                  const isHovered = !pick && hoveredDefId === def.id;
                   return (
                     <div 
                       key={def.id}
-                      className={`p-5 rounded-3xl border transition-all flex items-center justify-between relative ${
+                      onMouseEnter={() => !pick && setHoveredDefId(def.id)}
+                      onMouseLeave={() => setHoveredDefId(null)}
+                      className={`p-5 rounded-3xl border flex items-center justify-between relative ${
                         pick 
                         ? 'bg-black/40 border-white/5 opacity-40 grayscale pointer-events-none' 
-                        : 'bg-slate-900 border-white/10 hover:border-[#ee9c02]/60 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(238,156,2,0.12)] group'
+                        : 'group'
                       }`}
+                      style={pick ? {} : {
+                        backgroundColor: isHovered ? def.primary : '#0f172a',
+                        borderColor: isHovered ? def.secondary : 'rgba(255,255,255,0.1)',
+                        boxShadow: isHovered ? `0 0 18px 4px ${def.secondary}55, 0 4px 20px rgba(0,0,0,0.3)` : undefined,
+                        transform: isHovered ? 'translateY(-2px)' : undefined,
+                        transition: 'background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease',
+                      }}
                     >
                       {pick && (
                         <span className="absolute top-2 right-3 text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-[#b81d0f]/80 text-white">DRAFTED</span>
@@ -709,20 +730,32 @@ export default function App() {
                     <Trophy size={40} className="mx-auto mb-2" />
                     <div className="text-[10px] font-bold uppercase">No picks yet</div>
                   </div>
-                ) : (
-                  [...draft.picks].reverse().map((p, idx) => (
-                    <div key={idx} className="flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                      <div className="relative">
-                        <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${p.nflTeam.id.toLowerCase()}.png`} className="w-10 h-10" alt="" />
-                        <div className="absolute -top-1 -left-1 bg-yellow-500 text-black text-[7px] font-black px-1 rounded-sm">#{p.pickNumber}</div>
+                ) : (() => {
+                  const teamLogoMap = new Map(TEAMS.map(t => [t.name, t.logo]));
+                  return [...draft.picks].reverse().map((p, idx) => {
+                    const fantasyLogo = teamLogoMap.get(p.fantasyTeam);
+                    return (
+                      <div key={idx} className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-500">
+                        {/* Pick number badge — left of logo, no overlap */}
+                        <div className="flex-shrink-0 min-w-[28px] h-7 bg-orange-500 rounded-full flex items-center justify-center px-1.5">
+                          <span className="text-[8px] font-black text-white leading-none">#{p.pickNumber}</span>
+                        </div>
+                        {/* NFL team logo */}
+                        <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${p.nflTeam.id.toLowerCase()}.png`} className="w-10 h-10 flex-shrink-0" alt="" />
+                        {/* Text info */}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] font-black uppercase text-white truncate">{p.fantasyTeam}</div>
+                          <div className="text-[8px] font-bold text-yellow-500 uppercase">{p.nflTeam.name}</div>
+                        </div>
+                        {/* ENL fantasy team logo */}
+                        {fantasyLogo && (
+                          <img src={fantasyLogo} className="w-8 h-8 flex-shrink-0 rounded-full object-contain border border-white/10" alt={p.fantasyTeam} title={p.fantasyTeam} />
+                        )}
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-black uppercase text-white truncate">{p.fantasyTeam}</div>
-                        <div className="text-[8px] font-bold text-yellow-500 uppercase">{p.nflTeam.name}</div>
-                      </div>
-                    </div>
-                  ))
-                )}
+                    );
+                  });
+                })()
+                }
               </div>
             </aside>
           </div>
