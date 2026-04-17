@@ -105,8 +105,11 @@
     min-width: 0 !important;
   }
 
-  /* Card: drop square aspect ratio, become a full-width horizontal card */
+  /* Card: drop square aspect ratio, become a full-width horizontal card.
+     order restores strict 1–16 top-to-bottom sequence (overriding the
+     snake-draft rendering order used by the desktop grid). */
   .board-card {
+    order: var(--pick-num);
     aspect-ratio: auto !important;
     width: 100% !important;
     flex-direction: row !important;
