@@ -800,8 +800,8 @@ export default function App() {
         )}
 
         {activeTab === 'board' && (
-          <div className="bg-slate-900/50 border border-white/5 p-3 sm:p-8 rounded-xl sm:rounded-[2.5rem] overflow-x-auto scrollbar-hide">
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-4 sm:min-w-[1000px]">
+          <div className="board-container bg-slate-900/50 border border-white/5 p-3 sm:p-8 rounded-xl sm:rounded-[2.5rem] overflow-x-auto scrollbar-hide">
+            <div className="board-grid grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-4 sm:min-w-[1000px]">
               {Array.from({ length: TOTAL_PICKS }, (_, i) => {
                 const round = Math.floor(i / TEAMS_COUNT);
                 const pos = i % TEAMS_COUNT;
@@ -825,7 +825,7 @@ export default function App() {
                 return (
                   <div 
                     key={pickNum}
-                    className={`aspect-square rounded-2xl sm:rounded-3xl border-2 flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden transition-all duration-700 ${
+                    className={`board-card aspect-square rounded-2xl sm:rounded-3xl border-2 flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden transition-all duration-700 ${
                       pick 
                       ? 'bg-slate-800 border-yellow-500/20' 
                       : pickNum === draft.currentPick 
@@ -834,9 +834,9 @@ export default function App() {
                           ? 'bg-[#022240]/50 border-blue-400/70 shadow-[0_0_12px_rgba(96,165,250,0.3)] animate-on-deck-pulse'
                           : 'bg-[#022240]/30 border-white/20'
                     }${isJustPicked ? ' animate-pick-flash' : ''}`}
-                    style={pickedTeamColor ? { backgroundColor: pickedTeamColor } : {}}
+                    style={{ '--pick-num': pickNum, ...(pickedTeamColor ? { backgroundColor: pickedTeamColor } : {}) }}
                   >
-                    <span className="absolute top-1.5 left-2 sm:top-3 sm:left-4 text-[9px] font-black text-white" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.75)" }}>#{pickNum}</span>
+                    <span className="board-pick-num absolute top-1.5 left-2 sm:top-3 sm:left-4 text-[9px] font-black text-white" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.75)" }}>#{pickNum}</span>
                     {/* Sweep overlay for current pick */}
                     {!pick && pickNum === draft.currentPick && (
                       <div className="animate-sweep pointer-events-none absolute inset-0" />
@@ -853,34 +853,36 @@ export default function App() {
                         />
                       </div>
                     )}
-                    {pick ? (
-                      <>
-                        <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${pick.nflTeam.id.toLowerCase()}.png`} className="w-10 h-10 sm:w-14 sm:h-14 mb-1 sm:mb-2 drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]" alt="" />
-                        <div className="text-[9px] font-black uppercase text-center text-white break-words line-clamp-2">{pick.fantasyTeam}</div>
-                        {/* Emoji reactions */}
-                        <div className="flex items-center gap-0.5 mt-1 flex-wrap justify-center">
-                          {REACTION_EMOJIS.map(emoji => {
-                            const r = (reactions[pickNum] || {})[emoji] || { count: 0, mine: false };
-                            return (
-                              <button
-                                key={emoji}
-                                onClick={(e) => { e.stopPropagation(); toggleReaction(pickNum, emoji); }}
-                                className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] transition-colors ${r.mine ? 'bg-yellow-500/40 ring-1 ring-yellow-500/60' : 'bg-black/40 hover:bg-white/10'}`}
-                                title={`React with ${emoji}`}
-                              >
-                                <span className="text-[11px] leading-none">{emoji}</span>
-                                {r.count > 0 && <span className="text-white/80 font-bold text-[8px] leading-none">{r.count}</span>}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <img src={assignedTeam?.logo} className="w-7 h-7 sm:w-8 sm:h-8 opacity-90 mb-1 sm:mb-2 drop-shadow-[0_6px_18px_rgba(0,0,0,0.55)]" alt="" />
-                        <div className="text-[9px] font-black uppercase text-center text-white tracking-wide break-words line-clamp-2" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.85)" }}>{assignedTeam?.name}</div>
-                      </>
-                    )}
+                    <div className="board-card-body flex flex-col items-center">
+                      {pick ? (
+                        <>
+                          <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${pick.nflTeam.id.toLowerCase()}.png`} className="board-card-logo w-10 h-10 sm:w-14 sm:h-14 mb-1 sm:mb-2 drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]" alt="" />
+                          <div className="board-card-name text-[9px] font-black uppercase text-center text-white break-words line-clamp-2">{pick.fantasyTeam}</div>
+                          {/* Emoji reactions */}
+                          <div className="flex items-center gap-0.5 mt-1 flex-wrap justify-center">
+                            {REACTION_EMOJIS.map(emoji => {
+                              const r = (reactions[pickNum] || {})[emoji] || { count: 0, mine: false };
+                              return (
+                                <button
+                                  key={emoji}
+                                  onClick={(e) => { e.stopPropagation(); toggleReaction(pickNum, emoji); }}
+                                  className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] transition-colors ${r.mine ? 'bg-yellow-500/40 ring-1 ring-yellow-500/60' : 'bg-black/40 hover:bg-white/10'}`}
+                                  title={`React with ${emoji}`}
+                                >
+                                  <span className="text-[11px] leading-none">{emoji}</span>
+                                  {r.count > 0 && <span className="text-white/80 font-bold text-[8px] leading-none">{r.count}</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <img src={assignedTeam?.logo} className="board-card-logo w-7 h-7 sm:w-8 sm:h-8 opacity-90 mb-1 sm:mb-2 drop-shadow-[0_6px_18px_rgba(0,0,0,0.55)]" alt="" />
+                          <div className="board-card-name text-[9px] font-black uppercase text-center text-white tracking-wide break-words line-clamp-2" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.85)" }}>{assignedTeam?.name}</div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}

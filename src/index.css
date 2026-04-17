@@ -97,3 +97,79 @@
 .animate-on-deck-pulse {
   animation: onDeckPulse 2s ease-in-out infinite;
 }
+
+/* ===== Mobile draft board layout (≤600px) ===== */
+@media (max-width: 600px) {
+  /* Container: disable horizontal overflow, use normal vertical padding */
+  .board-container {
+    overflow-x: visible !important;
+    padding: 12px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Grid → single-column vertical flex list */
+  .board-grid {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  /* Card: drop square aspect ratio, become a full-width horizontal card.
+     order restores strict 1–16 top-to-bottom sequence (overriding the
+     snake-draft rendering order used by the desktop grid). */
+  .board-card {
+    order: var(--pick-num);
+    aspect-ratio: auto !important;
+    width: 100% !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 14px 18px 14px !important; /* extra bottom padding for progress bar */
+    min-height: 68px;
+    border-radius: 14px !important;
+  }
+
+  /* Pick number: pull out of absolute positioning, become first flex item */
+  .board-pick-num {
+    position: static !important;
+    flex-shrink: 0;
+    min-width: 28px;
+    text-align: center;
+    font-size: 10px !important;
+    opacity: 0.7;
+    text-shadow: none !important;
+  }
+
+  /* Card body (logo + name): horizontal row */
+  .board-card-body {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Logo sizing on mobile */
+  .board-card-logo {
+    width: 40px !important;
+    height: 40px !important;
+    margin-bottom: 0 !important;
+    margin-right: 0 !important;
+    flex-shrink: 0;
+  }
+
+  /* Team/owner name text: left-aligned, single truncated line */
+  .board-card-name {
+    text-align: left !important;
+    font-size: 11px !important;
+    -webkit-line-clamp: unset !important;
+    display: block !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+}
