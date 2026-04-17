@@ -25,3 +25,21 @@
   background: linear-gradient(105deg, transparent 30%, rgba(238, 156, 2, 0.45) 50%, transparent 70%);
   border-radius: inherit;
 }
+
+@keyframes goldGlow {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(238, 156, 2, 0.4), 0 0 24px 4px rgba(238, 156, 2, 0.2); }
+  50%       { box-shadow: 0 0 18px 5px rgba(238, 156, 2, 0.75), 0 0 44px 10px rgba(238, 156, 2, 0.38); }
+}
+
+@keyframes goldTextGlow {
+  0%, 100% { text-shadow: 0 0 8px rgba(238, 156, 2, 0.6), 0 0 16px rgba(238, 156, 2, 0.3); }
+  50%       { text-shadow: 0 0 18px rgba(238, 156, 2, 1), 0 0 36px rgba(238, 156, 2, 0.55); }
+}
+
+.animate-gold-glow {
+  animation: goldGlow 1.8s ease-in-out infinite;
+}
+
+.animate-gold-text-glow {
+  animation: goldTextGlow 1.8s ease-in-out infinite;
+}
