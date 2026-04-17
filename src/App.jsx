@@ -719,16 +719,18 @@ export default function App() {
                 const pickNum = i + 1;
                 const pick = draft.picks.find(p => p.pickNumber === pickNum);
                 const assignedTeam = TEAMS.find(t => t.name === draft.pickMap[pickNum]);
+                const pickedTeamColor = pick ? (DEFENSES.find(d => d.id === pick.nflTeam?.id)?.primary || '#1e293b') : null;
                 return (
                   <div 
                     key={pickNum}
-                    className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center p-4 relative overflow-hidden transition-all ${
+                    className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center p-4 relative overflow-hidden transition-all duration-700 ${
                       pick 
-                      ? 'bg-black/70 border-yellow-500/20' 
+                      ? 'bg-slate-800 border-yellow-500/20' 
                       : pickNum === draft.currentPick 
                         ? 'bg-[#022240]/60 border-[#ee9c02] shadow-[0_0_18px_rgba(238,156,2,0.35)]'
                         : 'bg-[#022240]/30 border-white/20'
                     }`}
+                    style={pickedTeamColor ? { backgroundColor: pickedTeamColor } : {}}
                   >
                     <span className="absolute top-3 left-4 text-[9px] font-black text-white" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.75)" }}>#{pickNum}</span>
                     {/* Sweep overlay for current pick */}
