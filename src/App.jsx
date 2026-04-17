@@ -35,6 +35,12 @@ const DEFENSES = [
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
+function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 // Parses "H:MM:SS" or "MM:SS" into milliseconds. Returns null if invalid.
 function parseHmsToMs(hms) {
   const parts = String(hms).trim().split(':').map(Number);
@@ -179,6 +185,11 @@ export default function App() {
   const [overrideHms, setOverrideHms] = useState('1:00:00');
   const [overrideMinutesDelta, setOverrideMinutesDelta] = useState(10);
 
+  // Draft pick animation state
+  const [draftAnimation, setDraftAnimation] = useState(null);
+  // -1 = not yet initialized (avoids triggering animation on page load)
+  const prevPicksLengthRef = useRef(-1);
+
   // Refs for notification dedup within this client session
   const wasQuietRef = useRef(false);
   const sentOneHourForPickRef = useRef(null);
@@ -259,6 +270,32 @@ export default function App() {
       updateDoc(docRef, { clockOverride: null }).catch(() => {});
     }
   }, [draft?.currentPick, user]);
+
+  // Trigger draft pick animation only when picks count increases (not on undo/rollback).
+  useEffect(() => {
+    if (!draft?.picks) return;
+    const len = draft.picks.length;
+    if (prevPicksLengthRef.current === -1) {
+      // First snapshot — initialize without playing animation.
+      prevPicksLengthRef.current = len;
+      return;
+    }
+    if (len > prevPicksLengthRef.current && len > 0) {
+      // New pick added — find the pick with the highest pickNumber.
+      const latest = draft.picks.reduce(
+        (a, b) => (b.pickNumber > a.pickNumber ? b : a)
+      );
+      setDraftAnimation(latest);
+    }
+    prevPicksLengthRef.current = len;
+  }, [draft?.picks?.length]);
+
+  // Auto-clear draft animation after it finishes.
+  useEffect(() => {
+    if (!draftAnimation) return;
+    const timer = setTimeout(() => setDraftAnimation(null), 3800);
+    return () => clearTimeout(timer);
+  }, [draftAnimation]);
 
   // Timer Effect — counts down active (non-quiet-hours) time within the 12-hour pick window.
   // Quiet hours are 12:00 AM–8:00 AM in the OTC team's local timezone; the clock is paused then.
@@ -861,6 +898,38 @@ export default function App() {
         )}
       </div>
       </div>
+
+      {/* Draft Pick Animation Overlay */}
+      {draftAnimation && (
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
+          <div className="animate-draft-banner relative flex flex-col items-center bg-gradient-to-b from-[#022240] to-[#010d1a] border-2 border-yellow-500 rounded-3xl px-10 py-8 shadow-[0_0_80px_rgba(238,156,2,0.5),0_0_160px_rgba(238,156,2,0.2)] max-w-xs w-full mx-4 text-center overflow-hidden">
+            {/* Gold accent lines */}
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent" />
+            {/* Pick number badge */}
+            <div className="text-[10px] font-black uppercase tracking-[0.25em] text-yellow-400 mb-4">
+              With the {ordinal(draftAnimation.pickNumber)} Pick
+            </div>
+            {/* NFL team logo — bounce in with gold glow */}
+            <img
+              src={`https://a.espncdn.com/i/teamlogos/nfl/500/${draftAnimation.nflTeam.id.toLowerCase()}.png`}
+              className="w-28 h-28 object-contain animate-draft-logo mb-5"
+              alt={draftAnimation.nflTeam.name}
+            />
+            {/* DRAFTED! heading */}
+            <div className="text-5xl font-black italic uppercase tracking-tighter text-yellow-500 mb-3 animate-gold-text-glow">
+              DRAFTED!
+            </div>
+            {/* Fantasy team + NFL team names */}
+            <div className="text-white font-black uppercase text-sm tracking-wide">
+              {draftAnimation.fantasyTeam}
+            </div>
+            <div className="text-yellow-400/80 text-xs font-bold uppercase mt-1">
+              selects the {draftAnimation.nflTeam.name} D/ST
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
