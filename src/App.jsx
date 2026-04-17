@@ -693,20 +693,32 @@ export default function App() {
                     <Trophy size={40} className="mx-auto mb-2" />
                     <div className="text-[10px] font-bold uppercase">No picks yet</div>
                   </div>
-                ) : (
-                  [...draft.picks].reverse().map((p, idx) => (
-                    <div key={idx} className="flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                      <div className="relative">
-                        <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${p.nflTeam.id.toLowerCase()}.png`} className="w-10 h-10" alt="" />
-                        <div className="absolute -top-1 -left-1 bg-yellow-500 text-black text-[7px] font-black px-1 rounded-sm">#{p.pickNumber}</div>
+                ) : (() => {
+                  const teamLogoMap = new Map(TEAMS.map(t => [t.name, t.logo]));
+                  return [...draft.picks].reverse().map((p, idx) => {
+                    const fantasyLogo = teamLogoMap.get(p.fantasyTeam);
+                    return (
+                      <div key={idx} className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-500">
+                        {/* Pick number badge — left of logo, no overlap */}
+                        <div className="flex-shrink-0 min-w-[28px] h-7 bg-orange-500 rounded-full flex items-center justify-center px-1.5">
+                          <span className="text-[8px] font-black text-white leading-none">#{p.pickNumber}</span>
+                        </div>
+                        {/* NFL team logo */}
+                        <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${p.nflTeam.id.toLowerCase()}.png`} className="w-10 h-10 flex-shrink-0" alt="" />
+                        {/* Text info */}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] font-black uppercase text-white truncate">{p.fantasyTeam}</div>
+                          <div className="text-[8px] font-bold text-yellow-500 uppercase">{p.nflTeam.name}</div>
+                        </div>
+                        {/* ENL fantasy team logo */}
+                        {fantasyLogo && (
+                          <img src={fantasyLogo} className="w-8 h-8 flex-shrink-0 rounded-full object-contain border border-white/10" alt={p.fantasyTeam} title={p.fantasyTeam} />
+                        )}
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-black uppercase text-white truncate">{p.fantasyTeam}</div>
-                        <div className="text-[8px] font-bold text-yellow-500 uppercase">{p.nflTeam.name}</div>
-                      </div>
-                    </div>
-                  ))
-                )}
+                    );
+                  });
+                })()
+                }
               </div>
             </aside>
           </div>
