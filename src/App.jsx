@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import { Trophy, Clock, Shield, RotateCcw, Lock, ChevronRight, ArrowLeftRight } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 // --- CONFIG ---
 const LEAGUE_LOGO = "https://i.imgur.com/tz2WUcI.png";
@@ -204,6 +205,21 @@ export default function App() {
   // Tracks which defense card is currently hovered (by NFL team id)
   const [hoveredDefId, setHoveredDefId] = useState(null);
 
+  // Emoji reactions — local state: { [pickNumber]: { [emoji]: { count, mine } } }
+  const REACTION_EMOJIS = ['🔥', '👀', '🤡'];
+  const [reactions, setReactions] = useState({});
+  const toggleReaction = (pickNum, emoji) => {
+    setReactions(prev => {
+      const pickReactions = prev[pickNum] || {};
+      const currentReaction = pickReactions[emoji] || { count: 0, mine: false };
+      const isUserReacting = !currentReaction.mine;
+      return {
+        ...prev,
+        [pickNum]: { ...pickReactions, [emoji]: { count: Math.max(0, currentReaction.count + (isUserReacting ? 1 : -1)), mine: isUserReacting } }
+      };
+    });
+  };
+
   // Refs for notification dedup within this client session
   const wasQuietRef = useRef(false);
   const sentOneHourForPickRef = useRef(null);
@@ -309,6 +325,17 @@ export default function App() {
     if (!draftAnimation) return;
     const timer = setTimeout(() => setDraftAnimation(null), 3800);
     return () => clearTimeout(timer);
+  }, [draftAnimation]);
+
+  // Confetti burst — fires once when a new pick is made (draftAnimation goes non-null).
+  useEffect(() => {
+    if (!draftAnimation) return;
+    confetti({
+      particleCount: 160,
+      spread: 80,
+      origin: { y: 0.55 },
+      colors: ['#fbbf24', '#f59e0b', '#ffffff', '#60a5fa', '#34d399'],
+    });
   }, [draftAnimation]);
 
   // Timer Effect — counts down active (non-quiet-hours) time within the 12-hour pick window.
@@ -600,6 +627,7 @@ export default function App() {
 
   const isPaused = timeLeft.startsWith('PAUSED');
   const otcTeam = TEAMS.find(t => t.name === otcName);
+  const isClockUrgent = clockRemainingMs !== null && clockRemainingMs < 3600000 && !isPaused;
 
   return (
     <div className="relative min-h-screen text-slate-200 overflow-hidden" style={{ background: 'linear-gradient(160deg, #022240 0%, #010d1a 60%, #000000 100%)' }}>
@@ -672,8 +700,8 @@ export default function App() {
                     <img src={otcTeam.logo} className="w-14 h-14 object-contain rounded-full flex-shrink-0" alt={otcName} />
                   )}
                   <div className={`flex items-center gap-3 bg-black/40 px-6 py-4 rounded-3xl border border-white/5 ${!isPaused ? 'animate-gold-glow' : ''}`}>
-                    <Clock size={20} className="text-white" />
-                    <span className="text-2xl font-black font-mono text-white tracking-tighter">{timeLeft}</span>
+                    <Clock size={20} className={isClockUrgent ? 'text-red-500' : 'text-white'} />
+                    <span className={`text-2xl font-black font-mono tracking-tighter ${isClockUrgent ? 'text-red-500' : 'text-white'}`}>{timeLeft}</span>
                   </div>
                 </div>
               </div>
@@ -786,6 +814,8 @@ export default function App() {
                 const pickedTeamColor = pick ? (DEFENSES.find(d => d.id === pick.nflTeam?.id)?.primary || '#1e293b') : null;
                 // Pick-flash: highlight this column when it was just picked (draftAnimation matches)
                 const isJustPicked = draftAnimation?.pickNumber === pickNum;
+                // On-deck: the next unfilled pick after the current one
+                const isOnDeck = !pick && draft.currentPick < TOTAL_PICKS && pickNum === draft.currentPick + 1;
                 // Countdown bar: fraction of 12-hour clock remaining (0–1)
                 const barFraction = (clockRemainingMs !== null && !pick && pickNum === draft.currentPick)
                   ? Math.min(1, Math.max(0, clockRemainingMs / CLOCK_WINDOW_MS))
@@ -800,7 +830,9 @@ export default function App() {
                       ? 'bg-slate-800 border-yellow-500/20' 
                       : pickNum === draft.currentPick 
                         ? 'bg-[#022240]/60 border-[#ee9c02] shadow-[0_0_18px_rgba(238,156,2,0.35)]'
-                        : 'bg-[#022240]/30 border-white/20'
+                        : isOnDeck
+                          ? 'bg-[#022240]/50 border-blue-400/70 shadow-[0_0_12px_rgba(96,165,250,0.3)] animate-on-deck-pulse'
+                          : 'bg-[#022240]/30 border-white/20'
                     }${isJustPicked ? ' animate-pick-flash' : ''}`}
                     style={pickedTeamColor ? { backgroundColor: pickedTeamColor } : {}}
                   >
@@ -821,12 +853,27 @@ export default function App() {
                         />
                       </div>
                     )}
-                    {/* TODO: On-deck highlight — shade/animate the next-up team's column */}
                     {pick ? (
                       <>
-                        <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${pick.nflTeam.id.toLowerCase()}.png`} className="w-10 h-10 sm:w-14 sm:h-14 mb-1 sm:mb-3 drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]" alt="" />
+                        <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${pick.nflTeam.id.toLowerCase()}.png`} className="w-10 h-10 sm:w-14 sm:h-14 mb-1 sm:mb-2 drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]" alt="" />
                         <div className="text-[9px] font-black uppercase text-center text-white break-words line-clamp-2">{pick.fantasyTeam}</div>
-                        {/* TODO: Emoji reactions — display top reactions below team name */}
+                        {/* Emoji reactions */}
+                        <div className="flex items-center gap-0.5 mt-1 flex-wrap justify-center">
+                          {REACTION_EMOJIS.map(emoji => {
+                            const r = (reactions[pickNum] || {})[emoji] || { count: 0, mine: false };
+                            return (
+                              <button
+                                key={emoji}
+                                onClick={(e) => { e.stopPropagation(); toggleReaction(pickNum, emoji); }}
+                                className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] transition-colors ${r.mine ? 'bg-yellow-500/40 ring-1 ring-yellow-500/60' : 'bg-black/40 hover:bg-white/10'}`}
+                                title={`React with ${emoji}`}
+                              >
+                                <span className="text-[11px] leading-none">{emoji}</span>
+                                {r.count > 0 && <span className="text-white/80 font-bold text-[8px] leading-none">{r.count}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </>
                     ) : (
                       <>
