@@ -802,7 +802,7 @@ export default function App() {
                         ? 'bg-[#022240]/60 border-[#ee9c02] shadow-[0_0_18px_rgba(238,156,2,0.35)]'
                         : 'bg-[#022240]/30 border-white/20'
                     }${isJustPicked ? ' animate-pick-flash' : ''}`}
-                    style={pickedTeamColor ? { backgroundColor: pickedTeamColor } : {}}
+                    style={{ '--pick-num': pickNum, ...(pickedTeamColor ? { backgroundColor: pickedTeamColor } : {}) }}
                   >
                     <span className="board-pick-num absolute top-1.5 left-2 sm:top-3 sm:left-4 text-[9px] font-black text-white" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.75)" }}>#{pickNum}</span>
                     {/* Sweep overlay for current pick */}
