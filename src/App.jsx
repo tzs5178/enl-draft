@@ -672,9 +672,10 @@ export default function App() {
                     <Trophy size={40} className="mx-auto mb-2" />
                     <div className="text-[10px] font-bold uppercase">No picks yet</div>
                   </div>
-                ) : (
-                  [...draft.picks].reverse().map((p, idx) => {
-                    const fantasyTeamObj = TEAMS.find(t => t.name === p.fantasyTeam);
+                ) : (() => {
+                  const teamLogoMap = new Map(TEAMS.map(t => [t.name, t.logo]));
+                  return [...draft.picks].reverse().map((p, idx) => {
+                    const fantasyLogo = teamLogoMap.get(p.fantasyTeam);
                     return (
                       <div key={idx} className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-500">
                         {/* Pick number badge — left of logo, no overlap */}
@@ -689,13 +690,14 @@ export default function App() {
                           <div className="text-[8px] font-bold text-yellow-500 uppercase">{p.nflTeam.name}</div>
                         </div>
                         {/* ENL fantasy team logo */}
-                        {fantasyTeamObj?.logo && (
-                          <img src={fantasyTeamObj.logo} className="w-8 h-8 flex-shrink-0 rounded-full object-contain border border-white/10" alt={p.fantasyTeam} title={p.fantasyTeam} />
+                        {fantasyLogo && (
+                          <img src={fantasyLogo} className="w-8 h-8 flex-shrink-0 rounded-full object-contain border border-white/10" alt={p.fantasyTeam} title={p.fantasyTeam} />
                         )}
                       </div>
                     );
-                  })
-                )}
+                  });
+                })()
+                }
               </div>
             </aside>
           </div>
