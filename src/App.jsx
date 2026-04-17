@@ -764,8 +764,13 @@ export default function App() {
         {activeTab === 'board' && (
           <div className="bg-slate-900/50 border border-white/5 p-8 rounded-[2.5rem] overflow-x-auto scrollbar-hide">
             <div className="grid grid-cols-8 gap-4 min-w-[1000px]">
-              {Array.from({ length: TOTAL_PICKS }).map((_, i) => {
-                const pickNum = i + 1;
+              {Array.from({ length: TOTAL_PICKS }, (_, i) => {
+                const round = Math.floor(i / TEAMS_COUNT);
+                const pos = i % TEAMS_COUNT;
+                const pickNum = round % 2 === 0
+                  ? round * TEAMS_COUNT + pos + 1
+                  : (round + 1) * TEAMS_COUNT - pos;
+
                 const pick = draft.picks.find(p => p.pickNumber === pickNum);
                 const assignedTeam = TEAMS.find(t => t.name === draft.pickMap[pickNum]);
                 const pickedTeamColor = pick ? (DEFENSES.find(d => d.id === pick.nflTeam?.id)?.primary || '#1e293b') : null;
