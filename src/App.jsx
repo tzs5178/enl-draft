@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, onSnapshot, updateDoc, arrayUnion, runTransaction, deleteField } from 'firebase/firestore';
 import { Trophy, Clock, Shield, RotateCcw, Lock, ChevronRight, ArrowLeftRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -202,6 +202,9 @@ export default function App() {
   // -1 = not yet initialized (avoids triggering animation on page load)
   const prevPicksLengthRef = useRef(-1);
 
+  // Who's Online — list of { teamName, logo } for users active in the last 90 s
+  const [onlineUsers, setOnlineUsers] = useState([]);
+
   // Tracks which defense card is currently hovered (by NFL team id)
   const [hoveredDefId, setHoveredDefId] = useState(null);
 
@@ -301,6 +304,49 @@ export default function App() {
       updateDoc(docRef, { clockOverride: null }).catch(() => {});
     }
   }, [draft?.currentPick, user]);
+
+  // Who's Online — heartbeat presence tracking via Firestore.
+  // Each authenticated team writes their lastSeen timestamp every 30 s.
+  // Users are considered "online" if their lastSeen is within the last 90 s.
+  useEffect(() => {
+    if (!user || myTeamIdx === null) return;
+
+    const myTeam = TEAMS[myTeamIdx];
+    const presenceDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', 'presence_session');
+    const teamKey = `t${myTeamIdx}`;
+
+    const writePresence = () => {
+      setDoc(
+        presenceDocRef,
+        { [teamKey]: { teamName: myTeam.name, logo: myTeam.logo, lastSeen: Date.now() } },
+        { merge: true }
+      ).catch(() => {});
+    };
+
+    writePresence();
+    const heartbeat = setInterval(writePresence, 30000);
+
+    const unsubPresence = onSnapshot(
+      presenceDocRef,
+      (snap) => {
+        if (!snap.exists()) { setOnlineUsers([]); return; }
+        const data = snap.data();
+        const STALE_MS = 90000; // 90 s = 3 missed heartbeats
+        const now = Date.now();
+        const active = Object.values(data).filter(
+          (v) => v && typeof v.lastSeen === 'number' && now - v.lastSeen < STALE_MS
+        );
+        setOnlineUsers(active);
+      },
+      () => setOnlineUsers([])
+    );
+
+    return () => {
+      clearInterval(heartbeat);
+      unsubPresence();
+      updateDoc(presenceDocRef, { [teamKey]: deleteField() }).catch(() => {});
+    };
+  }, [user, myTeamIdx]);
 
   // Trigger draft pick animation only when picks count increases (not on undo/rollback).
   useEffect(() => {
@@ -652,6 +698,12 @@ export default function App() {
   const otcTeam = TEAMS.find(t => t.name === otcName);
   const isClockUrgent = clockRemainingMs !== null && clockRemainingMs < 3600000 && !isPaused;
 
+  // Recent picks ticker — last 5 picks in descending order
+  const recentPicks = useMemo(
+    () => [...(draft.picks || [])].sort((a, b) => b.pickNumber - a.pickNumber).slice(0, 5),
+    [draft.picks]
+  );
+
   return (
     <div className="relative min-h-screen text-slate-200 overflow-hidden" style={{ background: 'linear-gradient(160deg, #022240 0%, #010d1a 60%, #000000 100%)' }}>
       {/* Radial glow — blue */}
@@ -697,7 +749,73 @@ export default function App() {
           >
             Logout
           </button>
+
+          {/* Who's Online — hidden on mobile to save space */}
+          {onlineUsers.length > 0 && (
+            <div className="hidden md:flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-2xl border border-white/5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+              <span className="text-[7px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">Online</span>
+              <div className="flex items-center -space-x-1">
+                {onlineUsers.slice(0, 6).map((u, i) => (
+                  <div
+                    key={u.teamName}
+                    className="animate-presence-pop relative w-6 h-6 rounded-full border border-slate-700 overflow-hidden bg-slate-800 flex-shrink-0"
+                    style={{ zIndex: 6 - i, animationDelay: `${i * 60}ms` }}
+                    title={u.teamName}
+                  >
+                    <img src={u.logo} className="w-full h-full object-contain" alt={u.teamName} />
+                  </div>
+                ))}
+              </div>
+              {onlineUsers.length > 6 && (
+                <span className="text-[7px] font-bold text-slate-500">+{onlineUsers.length - 6}</span>
+              )}
+            </div>
+          )}
         </header>
+
+        {/* Recent Picks Ticker — live feed of the last 5 picks */}
+        {recentPicks.length > 0 && (
+          <div className="bg-black/60 border border-white/5 rounded-2xl mb-6 py-2 px-3 overflow-hidden">
+            <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
+              <span className="text-[7px] font-black uppercase text-yellow-500 tracking-widest whitespace-nowrap flex-shrink-0">
+                🏈 Recent Picks
+              </span>
+              <div className="w-px h-4 bg-white/10 flex-shrink-0" />
+              {recentPicks.map((p) => {
+                const isNew = draftAnimation?.pickNumber === p.pickNumber;
+                const fantasyTeamObj = TEAMS.find(t => t.name === p.fantasyTeam);
+                return (
+                  <div
+                    key={p.pickNumber}
+                    className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 flex-shrink-0 border transition-all ${
+                      isNew
+                        ? 'animate-ticker-slide-in bg-yellow-500/15 border-yellow-500/40'
+                        : 'bg-slate-800/60 border-white/5'
+                    }`}
+                  >
+                    <span className="text-[7px] font-black text-yellow-400 whitespace-nowrap">#{p.pickNumber}</span>
+                    <img
+                      src={`https://a.espncdn.com/i/teamlogos/nfl/500/${p.nflTeam.id.toLowerCase()}.png`}
+                      className="w-5 h-5 flex-shrink-0 object-contain"
+                      alt={p.nflTeam.name}
+                    />
+                    <span className="text-[8px] font-bold text-white whitespace-nowrap hidden sm:block max-w-[80px] truncate">
+                      {p.fantasyTeam}
+                    </span>
+                    {fantasyTeamObj?.logo && (
+                      <img
+                        src={fantasyTeamObj.logo}
+                        className="w-4 h-4 flex-shrink-0 rounded-full object-contain border border-white/10 hidden sm:block"
+                        alt={p.fantasyTeam}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Views */}
         {activeTab === 'draft' && (
