@@ -755,7 +755,7 @@ export default function App() {
           {onlineUsers.length > 0 && (
             <div className="hidden md:flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-2xl border border-white/5">
               <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
-              <span className="text-[7px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">Online</span>
+              <span className="text-[7px] font-black uppercase tracking-widest whitespace-nowrap" style={{ color: '#17c700' }}>Online</span>
               <div className="flex items-center -space-x-1">
                 {onlineUsers.slice(0, 6).map((u, i) => (
                   <div
