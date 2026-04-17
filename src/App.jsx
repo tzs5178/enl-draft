@@ -10,6 +10,7 @@ const ADMIN_TEAM_NAME = "The Sassy Boys";
 const TEAMS_COUNT = 8;
 const TOTAL_PICKS = 16;
 const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1494020176075689986/WEDJVhqheH9aY8VxWBr75s7H1HzOiNK-W_thu1XQ_elUmNqbrs7z6pJNogJsdVuME8G8";
+const CLOCK_WINDOW_MS = 12 * 3600000; // 12-hour active pick window in milliseconds
 
 const TEAMS = [
   { name: "The Golden Path", logo: "https://i.imgur.com/F4wgHz7.png", passcode: "3863", timeZone: "America/New_York", discordMention: "<@323174530283733002>" },
@@ -184,7 +185,9 @@ export default function App() {
   const [draft, setDraft] = useState(null);
   const [activeTab, setActiveTab] = useState('draft');
   const [timeLeft, setTimeLeft] = useState('--:--');
-  
+  // Effective remaining ms exposed to the board for the countdown progress bar
+  const [clockRemainingMs, setClockRemainingMs] = useState(null);
+
   // Admin Swap State
   const [swapA, setSwapA] = useState('');
   const [swapB, setSwapB] = useState('');
@@ -335,6 +338,8 @@ export default function App() {
         effectiveRemainingMs = remainingMs;
       }
       currentEffectiveRemainingMsRef.current = effectiveRemainingMs;
+      // Expose to board for countdown progress bar
+      setClockRemainingMs(effectiveRemainingMs);
 
       const nowQuiet = isInQuietHours(now, timeZone);
 
@@ -779,6 +784,14 @@ export default function App() {
                 const pick = draft.picks.find(p => p.pickNumber === pickNum);
                 const assignedTeam = TEAMS.find(t => t.name === draft.pickMap[pickNum]);
                 const pickedTeamColor = pick ? (DEFENSES.find(d => d.id === pick.nflTeam?.id)?.primary || '#1e293b') : null;
+                // Pick-flash: highlight this column when it was just picked (draftAnimation matches)
+                const isJustPicked = draftAnimation?.pickNumber === pickNum;
+                // Countdown bar: fraction of 12-hour clock remaining (0–1)
+                const barFraction = (clockRemainingMs !== null && !pick && pickNum === draft.currentPick)
+                  ? Math.min(1, Math.max(0, clockRemainingMs / CLOCK_WINDOW_MS))
+                  : null;
+                // Smooth HSL color: green (hue 120) at full → yellow → red (hue 0) when empty
+                const barHue = barFraction !== null ? Math.round(barFraction * 120) : 0;
                 return (
                   <div 
                     key={pickNum}
@@ -788,7 +801,7 @@ export default function App() {
                       : pickNum === draft.currentPick 
                         ? 'bg-[#022240]/60 border-[#ee9c02] shadow-[0_0_18px_rgba(238,156,2,0.35)]'
                         : 'bg-[#022240]/30 border-white/20'
-                    }`}
+                    }${isJustPicked ? ' animate-pick-flash' : ''}`}
                     style={pickedTeamColor ? { backgroundColor: pickedTeamColor } : {}}
                   >
                     <span className="absolute top-1.5 left-2 sm:top-3 sm:left-4 text-[9px] font-black text-white" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.75)" }}>#{pickNum}</span>
@@ -796,10 +809,24 @@ export default function App() {
                     {!pick && pickNum === draft.currentPick && (
                       <div className="animate-sweep pointer-events-none absolute inset-0" />
                     )}
+                    {/* Countdown progress bar — drains left-to-right, green→yellow→red */}
+                    {barFraction !== null && (
+                      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/30 overflow-hidden rounded-b-2xl sm:rounded-b-3xl">
+                        <div
+                          className="h-full countdown-bar"
+                          style={{
+                            width: `${barFraction * 100}%`,
+                            backgroundColor: `hsl(${barHue}, 85%, 45%)`,
+                          }}
+                        />
+                      </div>
+                    )}
+                    {/* TODO: On-deck highlight — shade/animate the next-up team's column */}
                     {pick ? (
                       <>
                         <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${pick.nflTeam.id.toLowerCase()}.png`} className="w-10 h-10 sm:w-14 sm:h-14 mb-1 sm:mb-3 drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]" alt="" />
                         <div className="text-[9px] font-black uppercase text-center text-white break-words line-clamp-2">{pick.fantasyTeam}</div>
+                        {/* TODO: Emoji reactions — display top reactions below team name */}
                       </>
                     ) : (
                       <>
@@ -945,6 +972,7 @@ export default function App() {
       </div>
 
       {/* Draft Pick Animation Overlay */}
+      {/* TODO: Confetti burst — trigger canvas-confetti here when draftAnimation fires */}
       {draftAnimation && (
         <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
           <div className="animate-draft-banner relative flex flex-col items-center bg-gradient-to-b from-[#022240] to-[#010d1a] border-2 border-yellow-500 rounded-3xl px-10 py-8 shadow-[0_0_80px_rgba(238,156,2,0.5),0_0_160px_rgba(238,156,2,0.2)] max-w-xs w-full mx-4 text-center overflow-hidden">
