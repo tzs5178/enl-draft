@@ -223,6 +223,7 @@ export default function App() {
   // Refs for notification dedup within this client session
   const wasQuietRef = useRef(false);
   const sentOneHourForPickRef = useRef(null);
+  const sentDeadlineForPickRef = useRef(null);
   // Tracks current effective remaining ms (updated each timer tick) for +/- buttons
   const currentEffectiveRemainingMsRef = useRef(0);
 
@@ -373,6 +374,28 @@ export default function App() {
       if (effectiveRemainingMs <= 0) {
         setTimeLeft("00:00:00");
         wasQuietRef.current = nowQuiet;
+
+        // Deadline expiry ping: fires once when the active clock reaches 0:00.
+        // Uses both a client-side ref and a Firestore transaction to prevent duplicate sends.
+        if (sentDeadlineForPickRef.current !== currentPick && (draft.notify?.lastDeadlinePick ?? -1) !== currentPick) {
+          sentDeadlineForPickRef.current = currentPick;
+          const currentMention = otcTeam?.discordMention || '';
+          const nextPickNum = currentPick + 1;
+          const nextTeamName = nextPickNum <= TOTAL_PICKS ? draft.pickMap[nextPickNum] : null;
+          const nextTeam = nextTeamName ? TEAMS.find(t => t.name === nextTeamName) : null;
+          const nextMention = nextTeam?.discordMention || '';
+          claimAndNotify(docRef, 'lastDeadlinePick', currentPick).then(won => {
+            if (!won) return;
+            let msg = `⏱️ **${otcTeamName}** has hit their deadline, they can make a pick anytime but the draft now continues! ${currentMention}`;
+            if (nextTeamName) {
+              const nextTimeZone = nextTeam?.timeZone || 'America/New_York';
+              const deadlineSec = Math.floor(computeDeadlineMs(Date.now(), nextTimeZone) / 1000);
+              msg += `\n🏈 **${nextTeamName}** is on the clock! ${nextMention} deadline is <t:${deadlineSec}:f>`;
+            }
+            sendDiscordMessage(msg);
+          }).catch(() => {});
+        }
+
         return;
       }
 
