@@ -541,6 +541,7 @@ export default function App() {
   const isAdmin = TEAMS[myTeamIdx].name === ADMIN_TEAM_NAME;
 
   const isPaused = timeLeft.startsWith('PAUSED');
+  const otcTeam = TEAMS.find(t => t.name === otcName);
 
   return (
     <div className="relative min-h-screen text-slate-200 overflow-hidden" style={{ background: 'linear-gradient(160deg, #022240 0%, #010d1a 60%, #000000 100%)' }}>
@@ -601,16 +602,21 @@ export default function App() {
               }`}>
                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Trophy size={100} /></div>
                 <div>
-                  <div className="text-[10px] font-black text-white uppercase tracking-widest mb-1 flex items-center gap-2">
+                  <div className={`text-[10px] font-black uppercase tracking-widest mb-1 flex items-center gap-2 ${!isPaused ? 'text-yellow-400 animate-gold-text-glow' : 'text-white'}`}>
                     <Shield size={12} className="text-yellow-500" /> Currently Picking
                   </div>
                   <div className="text-3xl font-black italic uppercase text-yellow-500 truncate max-w-md">
                     {otcName || "DRAFT COMPLETE"}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 bg-black/40 px-6 py-4 rounded-3xl border border-white/5 mt-6 md:mt-0">
-                  <Clock size={20} className="text-white/70" />
-                  <span className="text-2xl font-black font-mono text-white tracking-tighter">{timeLeft}</span>
+                <div className="flex items-center gap-4 mt-6 md:mt-0 ml-auto">
+                  {otcTeam?.logo && (
+                    <img src={otcTeam.logo} className="w-14 h-14 object-contain rounded-full flex-shrink-0" alt={otcName} />
+                  )}
+                  <div className={`flex items-center gap-3 bg-black/40 px-6 py-4 rounded-3xl border border-white/5 ${!isPaused ? 'animate-gold-glow' : ''}`}>
+                    <Clock size={20} className="text-white" />
+                    <span className="text-2xl font-black font-mono text-white tracking-tighter">{timeLeft}</span>
+                  </div>
                 </div>
               </div>
 
