@@ -703,7 +703,8 @@ export default function App() {
 
   const isPaused = timeLeft.startsWith('PAUSED');
   const otcTeam = TEAMS.find(t => t.name === otcName);
-  const isClockUrgent = clockRemainingMs !== null && clockRemainingMs < 3600000 && !isPaused;
+  const isUnderOneHour = clockRemainingMs !== null && clockRemainingMs < 3600000;
+  const isClockUrgent = isUnderOneHour && !isPaused;
 
   return (
     <div className="relative min-h-screen text-slate-200 overflow-hidden" style={{ background: 'linear-gradient(160deg, #022240 0%, #010d1a 60%, #000000 100%)' }}>
@@ -841,9 +842,34 @@ export default function App() {
                   {otcTeam?.logo && (
                     <img src={otcTeam.logo} className="w-14 h-14 object-contain rounded-full flex-shrink-0" alt={otcName} />
                   )}
-                  <div className={`flex items-center gap-3 bg-black/40 px-6 py-4 rounded-3xl border border-white/5 ${!isPaused ? 'animate-gold-glow' : ''}`}>
-                    <Clock size={20} className={isClockUrgent ? 'text-red-500' : 'text-white'} />
-                    <span className={`text-2xl font-black font-mono tracking-tighter ${isClockUrgent ? 'text-red-500' : 'text-white'}`}>{timeLeft}</span>
+                  <div className={`relative flex items-center gap-3 px-6 py-4 rounded-3xl border transition-all ${
+                    isPaused && isUnderOneHour
+                      ? 'bg-red-950/60 border-red-800/40'
+                      : isPaused
+                      ? 'bg-slate-700/50 border-slate-500/30'
+                      : isClockUrgent
+                      ? 'bg-black/40 border-red-500/30 animate-red-glow'
+                      : 'bg-black/40 border-white/5 animate-gold-glow'
+                  }`}>
+                    <Clock size={20} className={
+                      isClockUrgent || (isPaused && isUnderOneHour)
+                        ? 'text-red-400'
+                        : isPaused
+                        ? 'text-slate-400'
+                        : 'text-white'
+                    } />
+                    <span className={`text-2xl font-black font-mono tracking-tighter ${
+                      isClockUrgent || (isPaused && isUnderOneHour)
+                        ? 'text-red-400'
+                        : isPaused
+                        ? 'text-slate-400'
+                        : 'text-white'
+                    }`}>{timeLeft}</span>
+                    {isPaused && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-3xl bg-black/20" aria-label="Draft clock paused">
+                        <span className="text-2xl leading-none select-none opacity-90" aria-hidden="true">⏸</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

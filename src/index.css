@@ -44,6 +44,15 @@
   animation: goldTextGlow 1.8s ease-in-out infinite;
 }
 
+@keyframes redGlow {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.45), 0 0 24px 4px rgba(239, 68, 68, 0.22); }
+  50%       { box-shadow: 0 0 18px 5px rgba(239, 68, 68, 0.80), 0 0 44px 10px rgba(239, 68, 68, 0.40); }
+}
+
+.animate-red-glow {
+  animation: redGlow 1.8s ease-in-out infinite;
+}
+
 /* Draft pick celebration animations */
 @keyframes draftBanner {
   0%   { transform: translateY(-70px) scale(0.86); opacity: 0; }
