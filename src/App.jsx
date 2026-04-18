@@ -21,7 +21,7 @@ const TEAMS = [
   { name: "FantaCTE Fooseball Team", logo: "https://i.imgur.com/wb9CZsl.png", passcode: "0420", timeZone: "America/Denver", discordMention: "<@621338847392825371>" },
   { name: "New England Patriots", logo: "https://i.imgur.com/LKwLUM5.png", passcode: "2803", timeZone: "America/New_York", discordMention: "<@338127259510767626>" },
   { name: "Richmond Rebels", logo: "https://i.imgur.com/hDpWB15.png", passcode: "2116", timeZone: "America/New_York", discordMention: "<@218519122005327874>" },
-  { name: "This is your team on CTE", logo: "https://i.imgur.com/j4BaAQm.png", passcode: "0302", timeZone: "America/New_York", discordMention: "<@621370906396196866>" }
+  { name: "This is your team on CTE", logo: "https://i.imgur.com/j4BaAQm.png", passcode: "0302", timeZone: "Europe/Berlin", discordMention: "<@621370906396196866>" }
 ];
 
 const DEFENSES = [
