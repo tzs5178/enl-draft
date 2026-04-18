@@ -844,9 +844,9 @@ export default function App() {
                   )}
                   <div className={`relative flex items-center gap-3 px-6 py-4 rounded-3xl border transition-all ${
                     isPaused && isUnderOneHour
-                      ? 'bg-red-950/60 border-red-800/40'
+                      ? 'bg-red-950/50 border-red-800/40 animate-red-glow'
                       : isPaused
-                      ? 'bg-slate-700/50 border-slate-500/30'
+                      ? 'bg-blue-950/50 border-blue-500/30 animate-blue-glow'
                       : isClockUrgent
                       ? 'bg-black/40 border-red-500/30 animate-red-glow'
                       : 'bg-black/40 border-white/5 animate-gold-glow'
@@ -855,18 +855,20 @@ export default function App() {
                       isClockUrgent || (isPaused && isUnderOneHour)
                         ? 'text-red-400'
                         : isPaused
-                        ? 'text-slate-400'
+                        ? 'text-blue-300'
                         : 'text-white'
                     } />
                     <span className={`text-2xl font-black font-mono tracking-tighter ${
                       isClockUrgent || (isPaused && isUnderOneHour)
                         ? 'text-red-400'
                         : isPaused
-                        ? 'text-slate-400'
+                        ? 'text-blue-300'
                         : 'text-white'
                     }`}>{timeLeft}</span>
                     {isPaused && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-3xl bg-black/20" aria-label="Draft clock paused">
+                      <div className={`absolute inset-0 flex items-center justify-center rounded-3xl ${
+                        isUnderOneHour ? 'bg-red-950/25' : 'bg-blue-950/25'
+                      }`} aria-label="Draft clock paused">
                         <span className="text-2xl leading-none select-none opacity-90" aria-hidden="true">⏸</span>
                       </div>
                     )}
