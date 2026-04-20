@@ -389,7 +389,12 @@ export default function App() {
   // Quiet hours are 12:00 AM–8:00 AM in the OTC team's local timezone; the clock is paused then.
   // Also handles resume ping (fires once when 8 AM quiet-hours end) and 1-hour warning ping.
   useEffect(() => {
-    if (!draft || draft.currentPick > TOTAL_PICKS) return;
+    if (!draft) return;
+    if (draft.currentPick > TOTAL_PICKS || draft.status === 'ended') {
+      setTimeLeft('DRAFT_COMPLETE');
+      setClockRemainingMs(null);
+      return;
+    }
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', 'draft_session');
     const interval = setInterval(() => {
       const currentPick = draft.currentPick;
@@ -633,6 +638,12 @@ export default function App() {
     });
   };
 
+  const endDraft = async () => {
+    if (!user) return;
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', 'draft_session');
+    await updateDoc(docRef, { status: 'ended' }).catch((err) => console.error("End draft error", err));
+  };
+
   // Recent picks ticker — last 5 picks in descending order.
   // Must be declared here (before any early returns) to satisfy Rules of Hooks.
   const recentPicks = useMemo(
@@ -701,7 +712,8 @@ export default function App() {
   const isMyTurn = TEAMS[myTeamIdx].name === otcName;
   const isAdmin = TEAMS[myTeamIdx].name === ADMIN_TEAM_NAME;
 
-  const isPaused = timeLeft.startsWith('PAUSED');
+  const isDraftComplete = draft.currentPick > TOTAL_PICKS || draft.status === 'ended';
+  const isPaused = !isDraftComplete && timeLeft.startsWith('PAUSED');
   const otcTeam = TEAMS.find(t => t.name === otcName);
   const isUnderOneHour = clockRemainingMs !== null && clockRemainingMs < 3600000;
   const isClockUrgent = isUnderOneHour && !isPaused;
@@ -825,23 +837,31 @@ export default function App() {
             <div className="lg:col-span-2">
               {/* OTC Status */}
               <div className={`rounded-[2.5rem] p-8 mb-8 flex flex-col md:flex-row justify-between items-center relative overflow-hidden transition-all ${
-                isPaused
+                isDraftComplete
+                  ? 'bg-slate-900 border border-green-500/40 shadow-[0_0_32px_rgba(34,197,94,0.15)]'
+                  : isPaused
                   ? 'bg-[#022240]/80 border border-[#064b7f]/40'
                   : 'bg-slate-900 border border-[#ee9c02]/40 shadow-[0_0_32px_rgba(238,156,2,0.15)]'
               }`}>
                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Trophy size={100} /></div>
                 <div>
-                  <div className={`text-[10px] font-black uppercase tracking-widest mb-1 flex items-center gap-2 ${!isPaused ? 'text-yellow-400 animate-gold-text-glow' : 'text-white'}`}>
-                    <Shield size={12} className="text-yellow-500" /> Currently Picking
+                  <div className={`text-[10px] font-black uppercase tracking-widest mb-1 flex items-center gap-2 ${isDraftComplete ? 'text-green-400' : !isPaused ? 'text-yellow-400 animate-gold-text-glow' : 'text-white'}`}>
+                    <Shield size={12} className={isDraftComplete ? 'text-green-500' : 'text-yellow-500'} /> {isDraftComplete ? 'Draft Complete' : 'Currently Picking'}
                   </div>
-                  <div className="text-3xl font-black italic uppercase text-yellow-500 truncate max-w-md">
-                    {otcName || "DRAFT COMPLETE"}
+                  <div className={`text-3xl font-black italic uppercase truncate max-w-md ${isDraftComplete ? 'text-green-400' : 'text-yellow-500'}`}>
+                    {isDraftComplete ? 'DRAFT COMPLETE' : (otcName || 'DRAFT COMPLETE')}
                   </div>
                 </div>
                 <div className="flex items-center gap-4 mt-6 md:mt-0 ml-auto">
-                  {otcTeam?.logo && (
+                  {otcTeam?.logo && !isDraftComplete && (
                     <img src={otcTeam.logo} className="w-14 h-14 object-contain rounded-full flex-shrink-0" alt={otcName} />
                   )}
+                  {isDraftComplete ? (
+                    <div className="flex items-center gap-3 px-6 py-4 rounded-3xl border bg-green-950/40 border-green-500/30">
+                      <Trophy size={20} className="text-green-400" />
+                      <span className="text-2xl font-black font-mono tracking-tighter text-green-400">🏁 All Picks In</span>
+                    </div>
+                  ) : (
                   <div className={`relative flex items-center gap-3 px-6 py-4 rounded-3xl border transition-all ${
                     isPaused && isUnderOneHour
                       ? 'bg-red-950/50 border-red-800/40 animate-red-glow'
@@ -873,6 +893,7 @@ export default function App() {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               </div>
 
@@ -1119,6 +1140,14 @@ export default function App() {
                   <Lock size={16} /> Full Reset
                 </button>
               </div>
+              {isAdmin && !isDraftComplete && (
+                <button
+                  onClick={() => { if (window.confirm('End the draft now? This will stop the clock for all teams.')) endDraft(); }}
+                  className="mt-4 w-full flex items-center justify-center gap-3 bg-green-900/20 hover:bg-green-900/40 text-green-400 p-6 rounded-2xl text-xs font-black uppercase border border-green-500/10 transition-all"
+                >
+                  <Trophy size={16} /> End Draft
+                </button>
+              )}
             </div>
 
             {isAdmin && draft.currentPick <= TOTAL_PICKS && (
