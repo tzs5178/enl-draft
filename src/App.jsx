@@ -51,6 +51,11 @@ function ordinal(n) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+// Returns true when the draft has ended (all picks made or manually ended by admin).
+function checkDraftComplete(draft) {
+  return !!(draft && (draft.currentPick > TOTAL_PICKS || draft.status === 'ended'));
+}
+
 // Parses "H:MM:SS" or "MM:SS" into milliseconds. Returns null if invalid.
 function parseHmsToMs(hms) {
   const parts = String(hms).trim().split(':').map(Number);
@@ -390,7 +395,7 @@ export default function App() {
   // Also handles resume ping (fires once when 8 AM quiet-hours end) and 1-hour warning ping.
   useEffect(() => {
     if (!draft) return;
-    if (draft.currentPick > TOTAL_PICKS || draft.status === 'ended') {
+    if (checkDraftComplete(draft)) {
       setTimeLeft('DRAFT_COMPLETE');
       setClockRemainingMs(null);
       return;
@@ -641,7 +646,7 @@ export default function App() {
   const endDraft = async () => {
     if (!user) return;
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', 'draft_session');
-    await updateDoc(docRef, { status: 'ended' }).catch((err) => console.error("End draft error", err));
+    await updateDoc(docRef, { status: 'ended' }).catch((err) => console.error("Failed to end draft session", err));
   };
 
   // Recent picks ticker — last 5 picks in descending order.
@@ -712,7 +717,7 @@ export default function App() {
   const isMyTurn = TEAMS[myTeamIdx].name === otcName;
   const isAdmin = TEAMS[myTeamIdx].name === ADMIN_TEAM_NAME;
 
-  const isDraftComplete = draft.currentPick > TOTAL_PICKS || draft.status === 'ended';
+  const isDraftComplete = checkDraftComplete(draft);
   const isPaused = !isDraftComplete && timeLeft.startsWith('PAUSED');
   const otcTeam = TEAMS.find(t => t.name === otcName);
   const isUnderOneHour = clockRemainingMs !== null && clockRemainingMs < 3600000;
